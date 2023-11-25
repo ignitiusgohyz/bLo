@@ -1,0 +1,1 @@
+// describe how we want the blockchain to work

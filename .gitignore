@@ -1,0 +1,7 @@
+node_modules/
+build/
+*.json
+package-lock.json
+.truffle/
+.vscode/
+.DS_Store
