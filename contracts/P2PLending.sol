@@ -1,4 +1,4 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 
 contract P2PLending {
     uint256 public constant MIN_LOAN_AMOUNT = 0;
