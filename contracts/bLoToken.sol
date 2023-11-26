@@ -19,7 +19,10 @@ contract bLoToken {
     function getCredit() public payable {
         // exchange rate is 0.001 ETH to 1 bLo; 1 ether gets 1000 bLo
         uint256 amt = (msg.value * 1000) / (10 ** 18);
-        require(erc20Contract.totalSupply() + amt < supplyLimit, "Not enough bLo in total supply");
+        require(
+            erc20Contract.totalSupply() + amt < supplyLimit,
+            "Not enough bLo in total supply"
+        );
         erc20Contract.mint(msg.sender, amt);
     }
 
