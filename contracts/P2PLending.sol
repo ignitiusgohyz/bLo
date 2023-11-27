@@ -16,7 +16,7 @@ contract P2PLending {
         bool repaid;
     }
 
-     struct LenderInfo {
+    struct LenderInfo {
         address lenderAddr;
         uint256 lentAmt;
     }
@@ -29,9 +29,7 @@ contract P2PLending {
     mapping(uint => Loan) public loans;
     mapping(address => uint256) public borrowerTrustScores;
     mapping(uint256 => uint256) borrowReqToCollateralAmountMapping;
-    // might need to map loans to borrowReq instead
-    // mapping(uint256 => uint256) borrowReqToLoans;
-    // mapping(uint256 => uint256) loansToBorrowReqs;
+    mapping(uint256 => uint256) loanToBorrowReqMapping;
 
     event LoanCreated(uint loanId);
     event LoanFunded(uint loanId);
@@ -39,12 +37,18 @@ contract P2PLending {
 
     // this modifier should be shifted to borrowrequest
     modifier onlyUnrepaidLoan(uint loanId) {
-        require(!addressToLoans[msg.sender][loanId].repaid, "This loan has not been repaid");
+        require(
+            !addressToLoans[msg.sender][loanId].repaid,
+            "This loan has not been repaid"
+        );
         _;
     }
 
     modifier onlyBorrower(uint loanId) {
-        require(addressToLoans[msg.sender][loanId].borrower == msg.sender, "Only Borrower permitted");
+        require(
+            addressToLoans[msg.sender][loanId].borrower == msg.sender,
+            "Only Borrower permitted"
+        );
         _;
     }
 
@@ -111,35 +115,58 @@ contract P2PLending {
 
     function withdrawFundsFromLoans(uint loanId) public {}
 
-    function getLoanInfo(uint loanId) external view returns (
-        uint256 amount,
-        uint256 interest,
-        uint256 duration,
-        uint256 repaymentAmount,
-        address borrower,
-        bool repaid
-    ) {
+    function getLoanInfo(
+        uint loanId
+    )
+        external
+        view
+        returns (
+            uint256 amount,
+            uint256 interest,
+            uint256 duration,
+            uint256 repaymentAmount,
+            address borrower,
+            bool repaid
+        )
+    {
         Loan storage loan = loans[loanId];
-        return ( 
+        return (
             loan.amount,
             loan.interest,
             loan.duration,
             loan.repaymentAmount,
             loan.borrower,
-            loan.repaid);
+            loan.repaid
+        );
     }
 
-    // only borrower can repay their own active loans -> checked with modifier
-    function repayLoan(uint loanId) external payable onlyUnrepaidLoan(loanId) onlyBorrower(loanId) {
+    // only borrower can repay their own unrepaid loans -> checked with modifier
+    function repayLoan(
+        uint loanId
+    ) external payable onlyUnrepaidLoan(loanId) onlyBorrower(loanId) {
         // repayment amount must match the loan's repayment amount
-        require(msg.value == addressToLoans[msg.sender][loanId].repaymentAmount, "Repayment amount does not match");
-        // transferring of $$$$
-
+        require(
+            msg.value == addressToLoans[msg.sender][loanId].repaymentAmount,
+            "Repayment amount does not match"
+        );
+        // transferring of $$$$ to individual lenders
+        LenderInfo[] storage lenderInfoArray = lenders[loanId];
+        for (uint256 i = 0; i < lenderInfoArray.length; i++) {
+            payable(lenderInfoArray[i].lenderAddr).transfer(
+                lenderInfoArray[i].lentAmt * (1 + loans[loanId].interest)
+            );
+        }
+        // transferring of collateral to the borrower
+        uint256 collateral = borrowReqToCollateralAmountMapping[
+            loanToBorrowReqMapping[loanId]
+        ];
+        payable(msg.sender).transfer(collateral);
         // change in status
         addressToLoans[msg.sender][loanId].repaid = true;
         // need to look up borrow req and set it as inactive
 
         // emit LoanRepaid
+        emit LoanRepaid(loanId);
     }
 
     function revokeLoan(uint loanId) public {}
