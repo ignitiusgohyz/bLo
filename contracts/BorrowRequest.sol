@@ -15,12 +15,11 @@ contract BorrowRequest {
         bool active;
     }
 
-    
     // initializing id of borrow requests for mapping
     uint public borrowRequestCount = 0;
 
     // mapping borrow request id to list of LenderInfo, which contains lender address and amount he lent.
-    
+
     mapping(uint256 => borrowRequest) borrowRequests;
     mapping(address => borrowRequest[]) addressToBorrowRequests;
 
@@ -49,7 +48,6 @@ contract BorrowRequest {
         uint256 bloTokenCollateral,
         uint256 trustScore
     ) public {
-        
         uint256 newBorrowReqId = borrowRequestCount++;
 
         borrowRequest memory newBorrowRequest = borrowRequest(
@@ -81,12 +79,11 @@ contract BorrowRequest {
         address lender
     ) external payable {
         borrowRequest storage br = borrowRequests[borrowRequestId];
-        
-        
+
         br.lenders[lender] += fundingAmount;
         payable(address(this)).transfer(fundingAmount);
         // create LoanInfo with lender address and funding amount, add to lenders mapping
-      
+
         br.amountFunded += fundingAmount;
         // when borrow request fully funded, it should turn into loan
         if (br.amountFunded == br.amount) {
@@ -99,19 +96,42 @@ contract BorrowRequest {
         borrowRequests[borrowReqId].active = false;
     }
 
-    function getBorrower(uint256 borrowRequestId) public view validBorrowRequestId(borrowRequestId) returns (address owner){
+    function getBorrower(
+        uint256 borrowRequestId
+    )
+        public
+        view
+        validBorrowRequestId(borrowRequestId)
+        returns (address owner)
+    {
         return borrowRequests[borrowRequestId].borrower;
     }
 
-    function getIsActive(uint256 borrowRequestId) public view validBorrowRequestId(borrowRequestId) returns (bool active){
+    function getIsActive(
+        uint256 borrowRequestId
+    ) public view validBorrowRequestId(borrowRequestId) returns (bool active) {
         return borrowRequests[borrowRequestId].active;
     }
 
-    function getAmountFunded(uint256 borrowRequestId) public view validBorrowRequestId(borrowRequestId) returns (uint256 amountFunded){
+    function getAmountFunded(
+        uint256 borrowRequestId
+    )
+        public
+        view
+        validBorrowRequestId(borrowRequestId)
+        returns (uint256 amountFunded)
+    {
         return borrowRequests[borrowRequestId].amountFunded;
     }
 
-    function getAmount(uint256 borrowRequestId) public view validBorrowRequestId(borrowRequestId) returns (uint256 amount){
+    function getAmount(
+        uint256 borrowRequestId
+    )
+        public
+        view
+        validBorrowRequestId(borrowRequestId)
+        returns (uint256 amount)
+    {
         return borrowRequests[borrowRequestId].amount;
     }
 }
