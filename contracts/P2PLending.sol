@@ -71,6 +71,11 @@ contract P2PLending {
         _;
     }
 
+    modifier isActiveBorrowRequest(uint borrowRequestId){
+        require(borrowRequestContract.getIsActive(borrowRequestId), "Borrow Request is not active");
+        _;
+    }
+
     function createBorrowRequest(
         uint256 amount,
         uint8 repaymentDeadline,
@@ -89,20 +94,22 @@ contract P2PLending {
 
     }
 
-    function fundBorrowRequest(uint256 borrowRequestId) public payable notBorrower(borrowRequestId) { 
+    function fundBorrowRequest(uint256 borrowRequestId) public payable notBorrower(borrowRequestId) isActiveBorrowRequest(borrowRequestId){ 
         uint256 amount = msg.value;
-        BorrowRequest.borrowRequest memory borrowRequest = borrowRequestContract.getBorrowRequest(borrowRequestId);
+        uint256 amountFunded = borrowRequestContract.getAmountFunded(borrowRequestId);
+        uint256 borrowRequestAmount = borrowRequestContract.getAmount(borrowRequestId);
+        
 
-        if (amount + borrowRequest.amountFunded >= borrowRequest.amount) {
+        if (amount + amountFunded >= borrowRequestAmount) {
             createLoan(borrowRequestId);
 
-            uint256 leftover = borrowRequest.amount - (amount + borrowRequest.amountFunded);
+            uint256 leftover = borrowRequestAmount - (amount + amountFunded);
             if (leftover > 0) {
                 msg.sender.transfer(leftover);
             }
-            borrowRequestContract.fundBorrowRequest(borrowRequestId, amount - leftover);
+            borrowRequestContract.fundBorrowRequest(borrowRequestId, amount - leftover, msg.sender);
         } else {
-            borrowRequestContract.fundBorrowRequest(borrowRequestId, amount);
+            borrowRequestContract.fundBorrowRequest(borrowRequestId, amount, msg.sender);
         }
 
 
