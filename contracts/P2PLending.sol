@@ -1,4 +1,5 @@
 pragma solidity ^0.6.0;
+import "./BorrowRequest.sol";
 
 contract P2PLending {
     uint256 public constant MIN_LOAN_AMOUNT = 0;
@@ -11,10 +12,20 @@ contract P2PLending {
         uint256 duration;
         uint256 repaymentAmount;
         address borrower;
-        mapping(address => uint256) lenders;
         bool repaid;
     }
-    mapping(address => Loan[]) public loans;
+
+     struct LenderInfo {
+        address lenderAddr;
+        uint256 lentAmt;
+    }
+
+    BorrowRequest brContract;
+    uint public loanCount = 0;
+
+    mapping(uint256 => LenderInfo[]) public lenders;
+    mapping(address => Loan[]) public addressToLoans;
+    mapping(uint => Loan) public loans;
     mapping(address => uint256) public borrowerTrustScores;
     mapping(uint256 => uint256) borrowReqToCollateralAmountMapping;
     // might need to map loans to borrowReq instead
@@ -26,29 +37,44 @@ contract P2PLending {
     event LoanRepaid(uint loanId);
 
     // this modifier should be shifted to borrowrequest
-    modifier onlyActiveLoan(uint loanId) {
-        require(loans[msg.sender][loanId].active, "This loan is not active");
+    modifier onlyUnrepaidLoan(uint loanId) {
+        require(!addressToLoans[msg.sender][loanId].repaid, "This loan has not been repaid");
+        _;
     }
 
     modifier onlyBorrower(uint loanId) {
-        require(loans[msg.sender][loanId].borrower == msg.sender, "Only Borrower permitted");
+        require(addressToLoans[msg.sender][loanId].borrower == msg.sender, "Only Borrower permitted");
+        _;
     }
 
     modifier onlyLender(uint loanId) {
-        require(loans[msg.sender][loanId].lenders[msg.sender] > 0. "Only Lender permitted");
+        LenderInfo[] storage lenderInfoArray = lenders[loanId];
+
+        bool exists = false;
+        for (uint256 i = 0; i < lenderInfoArray.length; i++) {
+            if (lenderInfoArray[i].lenderAddr == msg.sender) {
+                exists = true;
+                break;
+            }
+        }
+        require(exists, "Only Lender permitted");
+        _;
     }
 
-    function createLoan(uint borrowRequestId) {}
+    function createLoan(uint borrowRequestId) public {
+        // get BorrowRequestStruct instance from BorrowRequest contract using getter method defined in BorrowRequest
+        // use instance variables to create Loan
+        // map the loan id to the loan, increment loan count
+    }
 
-    function withdrawFundsFromLoans(uint loanId) {}
+    function withdrawFundsFromLoans(uint loanId) public {}
 
     function getLoanInfo(uint loanId) external view returns (
         uint256 amount,
-        uint256 interest
+        uint256 interest,
         uint256 duration,
         uint256 repaymentAmount,
         address borrower,
-        mapping(address => uint256) lenders,
         bool repaid
     ) {
         Loan storage loan = loans[loanId];
@@ -58,22 +84,21 @@ contract P2PLending {
             loan.duration,
             loan.repaymentAmount,
             loan.borrower,
-            loan.lenders,
-            loan.repaid)
+            loan.repaid);
     }
 
     // only borrower can repay their own active loans -> checked with modifier
-    function repayLoan(uint loanId) external payable onlyActiveLoan(loanId) onlyBorrower(loanId) {
+    function repayLoan(uint loanId) external payable onlyUnrepaidLoan(loanId) onlyBorrower(loanId) {
         // repayment amount must match the loan's repayment amount
-        require(msg.value == loans[msg.sender][loanId].repaymentAmount, "Repayment amount does not match");
+        require(msg.value == addressToLoans[msg.sender][loanId].repaymentAmount, "Repayment amount does not match");
         // transferring of $$$$
 
         // change in status
-        loans[msg.sender][loanId].repaid = true
+        addressToLoans[msg.sender][loanId].repaid = true;
         // need to look up borrow req and set it as inactive
 
         // emit LoanRepaid
     }
 
-    function revokeLoan(uint loanId) {}
+    function revokeLoan(uint loanId) public {}
 }

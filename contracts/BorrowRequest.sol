@@ -10,13 +10,21 @@ contract BorrowRequest {
         uint8 repaymentDeadLine;
         uint8 duration;
         address borrower;
-        mapping(address => uint256) lenders;
+        uint256 amountFunded;
+        // mapping(address => uint256) lenders;
         bool active;
+    }
+
+    struct LenderInfo {
+        address lenderAddr;
+        uint256 lentAmt;
     }
 
     // initializing id of borrow requests for mapping
     uint public borrowRequestCount = 0;
 
+    // mapping borrow request id to list of LenderInfo, which contains lender address and amount he lent.
+    mapping(uint256 => LenderInfo[]) public lenders;
     mapping(uint256 => BorrowRequestStruct) borrowRequests;
     mapping(address => BorrowRequestStruct[]) addressToBorrowRequests;
 
@@ -59,6 +67,7 @@ contract BorrowRequest {
             repaymentDeadline,
             duration,
             borrower,
+            0,
             false
         );
 
@@ -86,12 +95,21 @@ contract BorrowRequest {
             block.timestamp <= br.fundingDeadline,
             "Funding deadline has passed for this borrow request"
         );
+        require(fundingAmount < br.amountFunded, "Borrow request is already fully funded");
 
         payable(address(this)).transfer(fundingAmount);
+        // create LoanInfo with lender address and funding amount, add to lenders mapping
+        LenderInfo memory info = LenderInfo(msg.sender, fundingAmount);
+        lenders[borrowRequestId].push(info);
+        br.amountFunded += fundingAmount;
+        // when borrow request fully funded, it should turn into loan
+        if (br.amountFunded == br.amount) {
+            toggleActive(borrowRequestId);
+        }
     }
 
     // borrow request becomes active when it is actively funded i.e. turns into Loan.
-    function toggleActive(uint256 borrowReqId) external {
+    function toggleActive(uint256 borrowReqId) public {
         borrowRequests[borrowReqId].active = true;
     }
 }
