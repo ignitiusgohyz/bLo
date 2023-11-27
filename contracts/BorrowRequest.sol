@@ -11,10 +11,14 @@ contract BorrowRequest {
         uint8 duration;
         address borrower;
         uint256 amountFunded;
-        mapping(address => uint256) lenders;
         bool active;
     }
 
+    struct LenderInfo {
+        address lenderAddr;
+        uint256 lentAmt;
+    }
+    
     // initializing id of borrow requests for mapping
     uint public borrowRequestCount = 0;
 
@@ -22,6 +26,7 @@ contract BorrowRequest {
 
     mapping(uint256 => borrowRequest) borrowRequests;
     mapping(address => borrowRequest[]) addressToBorrowRequests;
+    mapping(uint256 => LenderInfo[]) public lenders;
 
     modifier validBorrowRequestId(uint256 borrowRequestId) {
         require(borrowRequestId < borrowRequestCount);
@@ -79,8 +84,10 @@ contract BorrowRequest {
         address lender
     ) external payable {
         borrowRequest storage br = borrowRequests[borrowRequestId];
-
-        br.lenders[lender] += fundingAmount;
+        
+        
+        LenderInfo memory info = LenderInfo(lender, fundingAmount);
+        lenders[borrowRequestId].push(info);
         payable(address(this)).transfer(fundingAmount);
         // create LoanInfo with lender address and funding amount, add to lenders mapping
 
@@ -133,5 +140,13 @@ contract BorrowRequest {
         returns (uint256 amount)
     {
         return borrowRequests[borrowRequestId].amount;
+    }
+
+    function getInterest(uint256 borrowRequestId) public view validBorrowRequestId(borrowRequestId) returns (uint256 interest){
+        return borrowRequests[borrowRequestId].interest;
+    }
+
+    function getDuration(uint256 borrowRequestId) public view validBorrowRequestId(borrowRequestId) returns (uint256 duration){
+        return borrowRequests[borrowRequestId].duration;
     }
 }

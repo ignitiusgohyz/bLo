@@ -25,7 +25,6 @@ contract P2PLending {
     uint public loanCount = 0;
 
     mapping(uint256 => LenderInfo[]) public lenders;
-    // mapping(address => Loan[]) public addressToLoans;
     mapping(uint => Loan) public loans;
     mapping(address => uint256) public borrowerTrustScores;
     mapping(uint256 => uint256) borrowReqToCollateralAmountMapping;
@@ -144,12 +143,21 @@ contract P2PLending {
                 msg.sender
             );
         }
+
     }
 
     function createLoan(uint borrowRequestId) public {
-        // get BorrowRequestStruct instance from BorrowRequest contract using getter method defined in BorrowRequest
-        // use instance variables to create Loan
-        // map the loan id to the loan, increment loan count
+        uint256 interest = borrowRequestContract.getInterest(borrowRequestId);
+        uint256 duration = borrowRequestContract.getDuration(borrowRequestId);
+        uint256 amount = borrowRequestContract.getAmount(borrowRequestId);
+        address borrower = borrowRequestContract.getBorrower(borrowRequestId);
+
+        uint256 repaymentAmount = amount * (1 + interest/100);
+
+        Loan memory newLoan = Loan(amount, interest, duration, repaymentAmount, borrower, false);
+        loanCount++;
+        loans[loanCount] = newLoan;
+        emit LoanCreated(loanCount);
     }
 
     function withdrawFundsFromLoans(uint loanId) public {}
