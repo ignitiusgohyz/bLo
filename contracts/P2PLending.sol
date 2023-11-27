@@ -1,5 +1,6 @@
 pragma solidity ^0.6.0;
 import "./BorrowRequest.sol";
+pragma experimental ABIEncoderV2;
 
 contract P2PLending {
     uint256 public constant MIN_LOAN_AMOUNT = 0;
@@ -20,7 +21,7 @@ contract P2PLending {
         uint256 lentAmt;
     }
 
-    BorrowRequest brContract;
+    BorrowRequest borrowRequestContract;
     uint public loanCount = 0;
 
     mapping(uint256 => LenderInfo[]) public lenders;
@@ -61,6 +62,47 @@ contract P2PLending {
         _;
     }
 
+    modifier notBorrower(uint borrowRequestId){
+        require(borrowRequestContract.getBorrower(borrowRequestId) != msg.sender, "You cannot fund your own request");
+        _;
+    }
+
+    function createBorrowRequest(
+        uint256 amount,
+        uint8 repaymentDeadline,
+        uint256 interest,
+        uint8 duration,
+        uint256 bloTokenCollateral
+        
+    )  public { 
+        validateLoanParams(amount, interest, duration, bloTokenCollateral, repaymentDeadline);
+        if (borrowerTrustScores[msg.sender] == 0) {
+            borrowerTrustScores[msg.sender] = 50; //set default
+        }
+        borrowRequestContract.createBorrowRequest(amount, repaymentDeadline, interest, duration, msg.sender, bloTokenCollateral, borrowerTrustScores[msg.sender]);
+
+        //send collateral to address
+
+    }
+
+    function fundBorrowRequest(uint256 borrowRequestId) public payable notBorrower(borrowRequestId) { 
+        uint256 amount = msg.value;
+        BorrowRequest.borrowRequest memory borrowRequest = borrowRequestContract.getBorrowRequest(borrowRequestId);
+
+        if (amount + borrowRequest.amountFunded >= borrowRequest.amount) {
+            createLoan(borrowRequestId);
+
+            uint256 leftover = borrowRequest.amount - (amount + borrowRequest.amountFunded);
+            if (leftover > 0) {
+                msg.sender.transfer(leftover);
+            }
+            borrowRequestContract.fundBorrowRequest(borrowRequestId, amount - leftover);
+        } else {
+            borrowRequestContract.fundBorrowRequest(borrowRequestId, amount);
+        }
+
+
+    }
     function createLoan(uint borrowRequestId) public {
         // get BorrowRequestStruct instance from BorrowRequest contract using getter method defined in BorrowRequest
         // use instance variables to create Loan
@@ -101,4 +143,13 @@ contract P2PLending {
     }
 
     function revokeLoan(uint loanId) public {}
+
+    function validateLoanParams(uint256 amount, uint256 interest, uint256 duration, uint256 bloTokenCollateral, 
+    uint256 repaymentDeadline) internal view {
+        require(amount < MAX_LOAN_AMOUNT && amount > MIN_LOAN_AMOUNT, "Invalid loan amount");
+        require(interest < MAX_INTEREST_RATE && interest > MIN_INTEREST_RATE, "Invalid interest rate");
+        require(duration > 0, "Loan duration must be more than 0!");
+        require(bloTokenCollateral > 0, "Collateral must be more than 0!");
+        require(repaymentDeadline > block.timestamp, "Repayment date must be in the future");
+    }
 }

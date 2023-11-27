@@ -1,12 +1,12 @@
 pragma solidity ^0.6.0;
+pragma experimental ABIEncoderV2;
 
 contract BorrowRequest {
-    struct BorrowRequestStruct {
+    struct borrowRequest {
         uint256 amount;
         uint256 interest;
         uint256 collateral;
         uint256 trustScore;
-        uint8 fundingDeadline;
         uint8 repaymentDeadLine;
         uint8 duration;
         address borrower;
@@ -25,8 +25,13 @@ contract BorrowRequest {
 
     // mapping borrow request id to list of LenderInfo, which contains lender address and amount he lent.
     mapping(uint256 => LenderInfo[]) public lenders;
-    mapping(uint256 => BorrowRequestStruct) borrowRequests;
-    mapping(address => BorrowRequestStruct[]) addressToBorrowRequests;
+    mapping(uint256 => borrowRequest) borrowRequests;
+    mapping(address => borrowRequest[]) addressToBorrowRequests;
+
+    modifier validBorrowRequestId(uint256 borrowRequestId) {
+        require(borrowRequestId < borrowRequestCount);
+        _;
+    }
 
     /** @dev Events */
     event BorrowRequestCreated(
@@ -41,7 +46,6 @@ contract BorrowRequest {
     this method probably needs to check if the interest defined is bounded by the min and max interest rates.*/
     function createBorrowRequest(
         uint256 amount,
-        uint8 fundingDeadline,
         uint8 repaymentDeadline,
         uint256 interest,
         uint8 duration,
@@ -49,26 +53,19 @@ contract BorrowRequest {
         uint256 bloTokenCollateral,
         uint256 trustScore
     ) public {
-        require(duration > 0, "Loan duration must be more than 0!");
-        require(bloTokenCollateral > 0, "Collateral must be more than 0!");
-        require(
-            repaymentDeadline > fundingDeadline,
-            "Funding deadline cannot be later than repayment deadline"
-        );
-
+        
         uint256 newBorrowReqId = borrowRequestCount++;
 
-        BorrowRequestStruct memory newBorrowRequest = BorrowRequestStruct(
+        borrowRequest memory newBorrowRequest = borrowRequest(
             amount,
             interest,
             bloTokenCollateral,
             trustScore,
-            fundingDeadline,
             repaymentDeadline,
             duration,
             borrower,
             0,
-            false
+            true
         );
 
         borrowRequests[newBorrowReqId] = newBorrowRequest;
@@ -86,15 +83,12 @@ contract BorrowRequest {
         uint256 borrowRequestId,
         uint256 fundingAmount
     ) external payable {
-        BorrowRequestStruct memory br = borrowRequests[borrowRequestId];
+        borrowRequest memory br = borrowRequests[borrowRequestId];
         require(
             msg.sender != br.borrower,
             "Borrower cannot fund their own borrow requests"
         );
-        require(
-            block.timestamp <= br.fundingDeadline,
-            "Funding deadline has passed for this borrow request"
-        );
+        
         require(fundingAmount < br.amountFunded, "Borrow request is already fully funded");
 
         payable(address(this)).transfer(fundingAmount);
@@ -111,5 +105,13 @@ contract BorrowRequest {
     // borrow request becomes active when it is actively funded i.e. turns into Loan.
     function toggleActive(uint256 borrowReqId) public {
         borrowRequests[borrowReqId].active = true;
+    }
+
+    function getBorrowRequest(uint256 borrowRequestId) public view validBorrowRequestId(borrowRequestId) returns (borrowRequest memory) {
+        return borrowRequests[borrowRequestId];
+    }
+
+    function getBorrower(uint256 borrowRequestId) public view validBorrowRequestId(borrowRequestId) returns (address owner){
+        return borrowRequests[borrowRequestId].borrower;
     }
 }
