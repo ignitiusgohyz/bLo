@@ -143,7 +143,6 @@ contract P2PLending {
                 msg.sender
             );
         }
-
     }
 
     function createLoan(uint borrowRequestId) public {
@@ -152,9 +151,16 @@ contract P2PLending {
         uint256 amount = borrowRequestContract.getAmount(borrowRequestId);
         address borrower = borrowRequestContract.getBorrower(borrowRequestId);
 
-        uint256 repaymentAmount = amount * (1 + interest/100);
+        uint256 repaymentAmount = amount * (1 + interest / 100);
 
-        Loan memory newLoan = Loan(amount, interest, duration, repaymentAmount, borrower, false);
+        Loan memory newLoan = Loan(
+            amount,
+            interest,
+            duration,
+            repaymentAmount,
+            borrower,
+            false
+        );
         loanCount++;
         loans[loanCount] = newLoan;
         emit LoanCreated(loanCount);
@@ -226,6 +232,15 @@ contract P2PLending {
             "Only borrower permitted to revoke borrow request."
         );
         // iterate through lenders and send them back their money
+        BorrowRequest.LenderInfo[]
+            memory lenderInfoArray = borrowRequestContract.getLenders(
+                borrowRequestId
+            );
+        for (uint256 i = 0; i < lenderInfoArray.length; i++) {
+            payable(lenderInfoArray[i].lenderAddr).transfer(
+                lenderInfoArray[i].lentAmt
+            );
+        }
         // collateral return back
         uint256 collateral = borrowReqToCollateralAmountMapping[
             borrowRequestId

@@ -18,7 +18,7 @@ contract BorrowRequest {
         address lenderAddr;
         uint256 lentAmt;
     }
-    
+
     // initializing id of borrow requests for mapping
     uint public borrowRequestCount = 0;
 
@@ -84,8 +84,7 @@ contract BorrowRequest {
         address lender
     ) external payable {
         borrowRequest storage br = borrowRequests[borrowRequestId];
-        
-        
+
         LenderInfo memory info = LenderInfo(lender, fundingAmount);
         lenders[borrowRequestId].push(info);
         payable(address(this)).transfer(fundingAmount);
@@ -142,11 +141,36 @@ contract BorrowRequest {
         return borrowRequests[borrowRequestId].amount;
     }
 
-    function getInterest(uint256 borrowRequestId) public view validBorrowRequestId(borrowRequestId) returns (uint256 interest){
+    function getInterest(
+        uint256 borrowRequestId
+    )
+        public
+        view
+        validBorrowRequestId(borrowRequestId)
+        returns (uint256 interest)
+    {
         return borrowRequests[borrowRequestId].interest;
     }
 
-    function getDuration(uint256 borrowRequestId) public view validBorrowRequestId(borrowRequestId) returns (uint256 duration){
+    function getDuration(
+        uint256 borrowRequestId
+    )
+        public
+        view
+        validBorrowRequestId(borrowRequestId)
+        returns (uint256 duration)
+    {
         return borrowRequests[borrowRequestId].duration;
+    }
+
+    function getLenders(
+        uint256 borrowRequestId
+    )
+        public
+        view
+        validBorrowRequestId(borrowRequestId)
+        returns (LenderInfo[] memory lenderInfoArray)
+    {
+        return lenders[borrowRequestId];
     }
 }
