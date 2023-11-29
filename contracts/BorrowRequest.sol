@@ -12,6 +12,7 @@ contract BorrowRequest {
         address borrower;
         uint256 amountFunded;
         bool active;
+        bool withdrawn;
     }
 
     struct LenderInfo {
@@ -30,6 +31,14 @@ contract BorrowRequest {
 
     modifier validBorrowRequestId(uint256 borrowRequestId) {
         require(borrowRequestId < borrowRequestCount);
+        _;
+    }
+
+    modifier onlyBorrower(uint borrowRequestId, address borrower) {
+        require(
+            borrowRequests[borrowRequestId].borrower == borrower,
+            "Only Borrower permitted"
+        );
         _;
     }
 
@@ -64,7 +73,8 @@ contract BorrowRequest {
             duration,
             borrower,
             0,
-            true
+            true,
+            false
         );
 
         borrowRequests[newBorrowReqId] = newBorrowRequest;
@@ -97,9 +107,14 @@ contract BorrowRequest {
         }
     }
 
+    function withdrawFromBorrowRequest(uint borrowRequestId, address payable borrower) validBorrowRequestId(borrowRequestId) onlyBorrower(borrowRequestId, borrower) external payable {
+        borrowRequests[borrowRequestId].withdrawn = true;
+        borrower.transfer(borrowRequests[borrowRequestId].amount);
+    }
+
     // borrow request becomes inactive when it is actively funded i.e. turns into Loan.
-    function toggleInactive(uint256 borrowReqId) public {
-        borrowRequests[borrowReqId].active = false;
+    function toggleInactive(uint256 borrowRequestId) public {
+        borrowRequests[borrowRequestId].active = false;
     }
 
     function getBorrower(

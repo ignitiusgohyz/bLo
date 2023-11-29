@@ -78,6 +78,11 @@ contract P2PLending {
         _;
     }
 
+    modifier validLoanId(uint256 loanId) {
+        require(loanId < loanCount);
+        _;
+    }
+
     function createBorrowRequest(
         uint256 amount,
         uint8 repaymentDeadline,
@@ -166,7 +171,12 @@ contract P2PLending {
         emit LoanCreated(loanCount);
     }
 
-    function withdrawFundsFromLoans(uint loanId) public {}
+    function withdrawFundsFromLoans(uint loanId) validLoanId(loanId) onlyBorrower(loanId) public {
+        uint256 borrowRequestId = loanToBorrowReqMapping[loanId];
+        address payable borrower = payable(msg.sender);
+        borrowRequestContract.withdrawFromBorrowRequest(borrowRequestId, borrower);
+
+    }
 
     function getLoanInfo(
         uint loanId
