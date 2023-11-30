@@ -11,7 +11,7 @@ var P2PLending = artifacts.require("../contracts/P2PLending.sol");
 contract ('P2PLending', function(accounts){
     before( async() => {
         bloTokenInstance = await BloToken.deployed();
-        borrowRequestInstance = await DiceMarket.deployed();
+        borrowRequestInstance = await BorrowRequest.deployed();
         p2pLendingInstance = await P2PLending.deployed();
     });
     console.log("Testing P2P Lending contract");
