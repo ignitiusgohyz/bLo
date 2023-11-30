@@ -2,7 +2,7 @@ pragma solidity >=0.6.0;
 
 import "./ERC20.sol";
 
-contract bLoToken {
+contract BloToken {
     ERC20 erc20Contract;
     uint256 supplyLimit;
     uint256 currentSupply;

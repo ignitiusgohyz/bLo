@@ -1,6 +1,6 @@
 pragma solidity >=0.6.0;
 import "./BorrowRequest.sol";
-import "/'bLoToken.sol";
+import "./BloToken.sol";
 pragma experimental ABIEncoderV2;
 
 contract P2PLending {
@@ -23,7 +23,7 @@ contract P2PLending {
     }
 
     BorrowRequest borrowRequestContract;
-    bLoToken bloTokenContract;
+    BloToken BloTokenContract;
     uint public loanCount = 0;
 
     mapping(uint256 => LenderInfo[]) public lenders;
@@ -115,7 +115,7 @@ contract P2PLending {
         borrowReqToCollateralAmountMapping[borrowRequestId] = bloTokenCollateral;
 
         //send collateral to address
-        bloTokenContract.transferBloToken(msg.sender, address(this), bloTokenCollateral);
+        BloTokenContract.transferBloToken(msg.sender, address(this), bloTokenCollateral);
     }
 
     function fundBorrowRequest(
@@ -233,7 +233,7 @@ contract P2PLending {
         uint256 collateral = borrowReqToCollateralAmountMapping[
             loanToBorrowReqMapping[loanId]
         ];
-        bloTokenContract.transferBloToken(address(this), msg.sender, collateral);
+        BloTokenContract.transferBloToken(address(this), msg.sender, collateral);
         // change in status
         loans[loanId].repaid = true;
         // need to look up borrow req and set it as inactive
