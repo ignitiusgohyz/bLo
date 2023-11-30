@@ -1,4 +1,4 @@
-pragma solidity ^0.6.0;
+pragma solidity >=0.6.0;
 
 //first need to approve the address of spender
 // Check the allowance

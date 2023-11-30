@@ -1,4 +1,4 @@
-pragma solidity ^0.6.0;
+pragma solidity >=0.6.0;
 pragma experimental ABIEncoderV2;
 
 contract BorrowRequest {
@@ -61,7 +61,7 @@ contract BorrowRequest {
         address borrower,
         uint256 bloTokenCollateral,
         uint256 trustScore
-    ) public {
+    ) public returns(uint256) {
         uint256 newBorrowReqId = borrowRequestCount++;
 
         borrowRequest memory newBorrowRequest = borrowRequest(
@@ -86,6 +86,7 @@ contract BorrowRequest {
             bloTokenCollateral,
             duration
         );
+        return newBorrowReqId;
     }
 
     function fundBorrowRequest(

@@ -1,4 +1,4 @@
-pragma solidity ^0.6.0;
+pragma solidity >=0.6.0;
 
 import "./ERC20.sol";
 
@@ -28,5 +28,9 @@ contract bLoToken {
 
     function checkCredit() public view returns (uint256) {
         return erc20Contract.balanceOf(msg.sender);
+    }
+
+    function transferBloToken(address from, address to, uint256 collateral) public payable {
+        erc20Contract.transferFrom(from, to, collateral);
     }
 }

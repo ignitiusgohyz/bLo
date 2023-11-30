@@ -1,5 +1,6 @@
-pragma solidity ^0.6.0;
+pragma solidity >=0.6.0;
 import "./BorrowRequest.sol";
+import "/'bLoToken.sol";
 pragma experimental ABIEncoderV2;
 
 contract P2PLending {
@@ -22,6 +23,7 @@ contract P2PLending {
     }
 
     BorrowRequest borrowRequestContract;
+    bLoToken bloTokenContract;
     uint public loanCount = 0;
 
     mapping(uint256 => LenderInfo[]) public lenders;
@@ -100,7 +102,7 @@ contract P2PLending {
         if (borrowerTrustScores[msg.sender] == 0) {
             borrowerTrustScores[msg.sender] = 50; //set default
         }
-        borrowRequestContract.createBorrowRequest(
+        uint256 borrowRequestId = borrowRequestContract.createBorrowRequest(
             amount,
             repaymentDeadline,
             interest,
@@ -109,8 +111,11 @@ contract P2PLending {
             bloTokenCollateral,
             borrowerTrustScores[msg.sender]
         );
+        //update borrowReqToCollateralAmountMapping
+        borrowReqToCollateralAmountMapping[borrowRequestId] = bloTokenCollateral;
 
         //send collateral to address
+        bloTokenContract.transferBloToken(msg.sender, address(this), bloTokenCollateral);
     }
 
     function fundBorrowRequest(
@@ -168,6 +173,11 @@ contract P2PLending {
         );
         loanCount++;
         loans[loanCount] = newLoan;
+        //update loanToBorrowReqMapping
+        loanToBorrowReqMapping[loanCount] = borrowRequestId;
+        //set borrowreq as inactive
+        borrowRequestContract.toggleInactive(borrowRequestId);
+
         emit LoanCreated(loanCount);
     }
 
@@ -223,7 +233,7 @@ contract P2PLending {
         uint256 collateral = borrowReqToCollateralAmountMapping[
             loanToBorrowReqMapping[loanId]
         ];
-        payable(msg.sender).transfer(collateral);
+        bloTokenContract.transferBloToken(address(this), msg.sender, collateral);
         // change in status
         loans[loanId].repaid = true;
         // need to look up borrow req and set it as inactive
