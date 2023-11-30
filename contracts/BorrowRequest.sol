@@ -7,7 +7,7 @@ contract BorrowRequest {
         uint256 interest;
         uint256 collateral;
         uint256 trustScore;
-        uint8 repaymentDeadLine;
+        uint256 repaymentDeadLine;
         uint8 duration;
         address borrower;
         uint256 amountFunded;
@@ -55,7 +55,7 @@ contract BorrowRequest {
     this method probably needs to check if the interest defined is bounded by the min and max interest rates.*/
     function createBorrowRequest(
         uint256 amount,
-        uint8 repaymentDeadline,
+        uint256 repaymentDeadline,
         uint256 interest,
         uint8 duration,
         address borrower,
@@ -63,7 +63,7 @@ contract BorrowRequest {
         uint256 trustScore
     ) public returns(uint256) {
         uint256 newBorrowReqId = borrowRequestCount++;
-
+       
         borrowRequest memory newBorrowRequest = borrowRequest(
             amount,
             interest,

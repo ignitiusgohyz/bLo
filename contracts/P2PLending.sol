@@ -4,10 +4,10 @@ import "./BloToken.sol";
 pragma experimental ABIEncoderV2;
 
 contract P2PLending {
-    uint256 public constant MIN_LOAN_AMOUNT = 0;
-    uint256 public constant MAX_LOAN_AMOUNT = 0;
-    uint256 public constant MIN_INTEREST_RATE = 0;
-    uint256 public constant MAX_INTEREST_RATE = 0;
+    uint256 public constant MIN_LOAN_AMOUNT = 100000000000000000;
+    uint256 public constant MAX_LOAN_AMOUNT = 10000000000000000000;
+    uint256 public constant MIN_INTEREST_RATE = 5;
+    uint256 public constant MAX_INTEREST_RATE = 20;
     struct Loan {
         uint256 amount;
         uint256 interest;
@@ -87,7 +87,7 @@ contract P2PLending {
 
     function createBorrowRequest(
         uint256 amount,
-        uint8 repaymentDeadline,
+        uint256 repaymentDeadline,
         uint256 interest,
         uint8 duration,
         uint256 bloTokenCollateral
