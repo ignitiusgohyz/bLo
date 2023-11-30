@@ -1,4 +1,4 @@
-pragma solidity >=0.6.0;
+pragma solidity >=0.4.22 <0.9.0;
 
 import "./ERC20.sol";
 
@@ -7,12 +7,14 @@ contract BloToken {
     uint256 supplyLimit;
     uint256 currentSupply;
     address owner;
-
+    event Log(string message);
     constructor() public {
         ERC20 e = new ERC20();
         erc20Contract = e;
         owner = msg.sender;
         supplyLimit = 100000;
+
+        emit Log("Contract deployed");
     }
 
     // function for contract caller to exchange ETH for bLo

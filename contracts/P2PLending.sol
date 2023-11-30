@@ -1,4 +1,4 @@
-pragma solidity >=0.6.0;
+pragma solidity >=0.4.22 <0.9.0;
 import "./BorrowRequest.sol";
 import "./BloToken.sol";
 pragma experimental ABIEncoderV2;
@@ -139,7 +139,8 @@ contract P2PLending {
 
             uint256 leftover = borrowRequestAmount - (amount + amountFunded);
             if (leftover > 0) {
-                msg.sender.transfer(leftover);
+                address payable lender = payable(msg.sender);
+                lender.transfer(leftover);
             }
             borrowRequestContract.fundBorrowRequest(
                 borrowRequestId,
