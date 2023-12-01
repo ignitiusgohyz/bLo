@@ -51,8 +51,6 @@ contract BorrowRequest {
         uint8 duration
     );
 
-    /*should this method be in PeerToPeerLending contract? Since that contract has min and max interest rate, and 
-    this method probably needs to check if the interest defined is bounded by the min and max interest rates.*/
     function createBorrowRequest(
         uint256 amount,
         uint256 repaymentDeadline,

@@ -85,7 +85,7 @@ contract P2PLending {
         _;
     }
 
-    function createBorrowRequest(
+    function createNewBorrowRequest(
         uint256 amount,
         uint256 repaymentDeadline,
         uint256 interest,
@@ -111,7 +111,7 @@ contract P2PLending {
             bloTokenCollateral,
             borrowerTrustScores[msg.sender]
         );
-        //update borrowReqToCollateralAmountMapping
+        // update borrowReqToCollateralAmountMapping
         borrowReqToCollateralAmountMapping[borrowRequestId] = bloTokenCollateral;
 
         //send collateral to address
