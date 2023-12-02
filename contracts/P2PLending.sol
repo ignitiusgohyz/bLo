@@ -147,12 +147,18 @@ contract P2PLending {
                 amount - leftover,
                 msg.sender
             );
+            // transfer funds to BorrowRequest contract
+            address payable receipient = payable(address(borrowRequestContract));
+            receipient.transfer(amount - leftover);
         } else {
             borrowRequestContract.fundBorrowRequest(
                 borrowRequestId,
                 amount,
                 msg.sender
             );
+            // transfer funds to BorrowRequest contract
+            address payable receipient = payable(address(borrowRequestContract));
+            receipient.transfer(amount);
         }
     }
 

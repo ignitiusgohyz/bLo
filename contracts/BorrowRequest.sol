@@ -96,8 +96,6 @@ contract BorrowRequest {
 
         LenderInfo memory info = LenderInfo(lender, fundingAmount);
         lenders[borrowRequestId].push(info);
-        payable(address(this)).transfer(fundingAmount);
-        // create LoanInfo with lender address and funding amount, add to lenders mapping
 
         br.amountFunded += fundingAmount;
         // when borrow request fully funded, it should turn into loan
