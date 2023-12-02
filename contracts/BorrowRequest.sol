@@ -116,6 +116,16 @@ contract BorrowRequest {
         borrowRequests[borrowRequestId].active = false;
     }
 
+    function checkAddressExists(address _targetAddress, uint256 borrowRequestId) public view returns (bool) {
+            LenderInfo[] memory lenderInfoArray = lenders[borrowRequestId];
+        for (uint256 i = 0; i < lenderInfoArray.length; i++) {
+            if (lenderInfoArray[i].lenderAddr == _targetAddress) {
+                return true; 
+            }
+        }
+        return false; 
+    }
+
     function getBorrower(
         uint256 borrowRequestId
     )

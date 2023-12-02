@@ -100,7 +100,7 @@ contract("P2PLending", function (accounts) {
       interest,
       duration,
       bloTokenCollateral,
-      { from: accounts[1] }
+      { from: accounts[4] }
     );
 
     const newCount = await borrowRequestInstance.borrowRequestCount();
@@ -135,7 +135,7 @@ contract("P2PLending", function (accounts) {
 
     // Call createBorrowRequest
     await debug(
-      p2pLendingInstance.createBorrowRequest(
+      p2pLendingInstance.createNewBorrowRequest(
         amount,
         repaymentDeadline,
         interest,
@@ -162,6 +162,30 @@ contract("P2PLending", function (accounts) {
       newContractCollateral.toNumber(),
       initialContractCollateral.toNumber() + bloTokenCollateral,
       "Collateral not sent to the contract"
+    );
+  });
+
+  it("Lender can fund active borrow request", async () => {
+    const lenderAccount = accounts[2];
+
+    // number returned from borrowRequestCount() matches the id of the latest BorrowRequest created
+    const borrowRequestId = borrowRequestInstance.borrowRequestCount();
+
+    // call fundBorrowRequest()
+    await p2pLendingInstance.fundBorrowRequest(borrowRequestId, {
+      from: lenderAccount,
+    });
+
+    // check that lender got added into lenders mapping of the specific borrow request
+    // get LenderInfo[] of borrow request by borrow request id
+    const exists = await borrowRequestInstance.checkAddressExists(
+      lenderAccount,
+      borrowRequestId
+    );
+    assert.equal(
+      exists,
+      true,
+      "Lender not in lenders list, funding did not execute correctly"
     );
   });
 });
