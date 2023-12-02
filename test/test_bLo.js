@@ -83,7 +83,7 @@ contract("P2PLending", function (accounts) {
     );
   });
 
-  it("Test Create Borrow Request from P2PLending contract", async () => {
+  it("Create Borrow Request from P2PLending contract", async () => {
     const initialBorrowReqCount =
       await borrowRequestInstance.borrowRequestCount();
 
@@ -166,14 +166,14 @@ contract("P2PLending", function (accounts) {
   });
 
   it("Lender can fund active borrow request", async () => {
-    const lenderAccount = accounts[2];
+    const lenderAccount = accounts[4];
 
-    // number returned from borrowRequestCount() matches the id of the latest BorrowRequest created
-    const borrowRequestId = borrowRequestInstance.borrowRequestCount();
+    const amountToFund = web3.utils.toWei("0.5", "ether");
 
     // call fundBorrowRequest()
-    await p2pLendingInstance.fundBorrowRequest(borrowRequestId, {
+    await p2pLendingInstance.fundBorrowRequest(1, {
       from: lenderAccount,
+      value: amountToFund,
     });
 
     // check that lender got added into lenders mapping of the specific borrow request
