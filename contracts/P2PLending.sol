@@ -1,5 +1,5 @@
 pragma solidity >=0.4.22 <0.9.0;
-import "./BorrowRequest.sol";
+// import "./BorrowRequest.sol";
 import "./BloToken.sol";
 pragma experimental ABIEncoderV2;
 
@@ -17,24 +17,48 @@ contract P2PLending {
         bool repaid;
     }
 
+    struct BorrowRequest {
+        uint256 amount;
+        uint256 interest;
+        uint256 collateral;
+        uint256 trustScore;
+        uint256 repaymentDeadLine;
+        uint8 duration;
+        address borrower;
+        uint256 amountFunded;
+        bool active;
+        bool withdrawn;
+    }
+
     struct LenderInfo {
         address lenderAddr;
         uint256 lentAmt;
     }
 
-    BorrowRequest borrowRequestContract;
+    // BorrowRequest borrowRequestContract;
     BloToken BloTokenContract;
     uint public loanCount = 0;
+    uint public borrowRequestCount = 0;
 
     mapping(uint256 => LenderInfo[]) public lenders;
+    mapping(uint256 => LenderInfo[]) public funders;
     mapping(uint => Loan) public loans;
     mapping(address => uint256) public borrowerTrustScores;
     mapping(uint256 => uint256) borrowReqToCollateralAmountMapping;
     mapping(uint256 => uint256) loanToBorrowReqMapping;
+    mapping(uint256 => BorrowRequest) borrowRequests;
+    mapping(address => BorrowRequest[]) addressToBorrowRequests;
 
     event LoanCreated(uint loanId);
     event LoanFunded(uint loanId);
     event LoanRepaid(uint loanId);
+    event BorrowRequestCreated(
+        uint256 amount,
+        address borrower,
+        uint256 interest,
+        uint256 collateral,
+        uint8 duration
+    );
 
     // this modifier should be shifted to borrowrequest
     modifier onlyUnrepaidLoan(uint loanId) {
@@ -66,7 +90,7 @@ contract P2PLending {
 
     modifier notBorrower(uint borrowRequestId) {
         require(
-            borrowRequestContract.getBorrower(borrowRequestId) != msg.sender,
+            borrowRequests[borrowRequestId].borrower != msg.sender,
             "You cannot fund your own request"
         );
         _;
@@ -74,7 +98,7 @@ contract P2PLending {
 
     modifier isActiveBorrowRequest(uint borrowRequestId) {
         require(
-            borrowRequestContract.getIsActive(borrowRequestId),
+            borrowRequests[borrowRequestId].active,
             "Borrow Request is not active"
         );
         _;
@@ -102,20 +126,47 @@ contract P2PLending {
         if (borrowerTrustScores[msg.sender] == 0) {
             borrowerTrustScores[msg.sender] = 50; //set default
         }
-        uint256 borrowRequestId = borrowRequestContract.createBorrowRequest(
+        // uint256 borrowRequestId = borrowRequestContract.createBorrowRequest(
+        //     amount,
+        //     repaymentDeadline,
+        //     interest,
+        //     duration,
+        //     msg.sender,
+        //     bloTokenCollateral,
+        //     borrowerTrustScores[msg.sender]
+        // );
+        uint256 newBorrowReqId = borrowRequestCount++;
+        BorrowRequest memory newBorrowRequest = BorrowRequest(
             amount,
-            repaymentDeadline,
             interest,
+            bloTokenCollateral,
+            borrowerTrustScores[msg.sender],
+            repaymentDeadline,
             duration,
             msg.sender,
+            0,
+            true,
+            false
+        );
+
+        borrowRequests[newBorrowReqId] = newBorrowRequest;
+
+        emit BorrowRequestCreated(
+            amount,
+            msg.sender,
+            interest,
             bloTokenCollateral,
-            borrowerTrustScores[msg.sender]
+            duration
         );
         // update borrowReqToCollateralAmountMapping
-        borrowReqToCollateralAmountMapping[borrowRequestId] = bloTokenCollateral;
+        borrowReqToCollateralAmountMapping[newBorrowReqId] = bloTokenCollateral;
 
         //send collateral to address
-        BloTokenContract.transferBloToken(msg.sender, address(this), bloTokenCollateral);
+        BloTokenContract.transferBloToken(
+            msg.sender,
+            address(this),
+            bloTokenCollateral
+        );
     }
 
     function fundBorrowRequest(
@@ -127,12 +178,8 @@ contract P2PLending {
         isActiveBorrowRequest(borrowRequestId)
     {
         uint256 amount = msg.value;
-        uint256 amountFunded = borrowRequestContract.getAmountFunded(
-            borrowRequestId
-        );
-        uint256 borrowRequestAmount = borrowRequestContract.getAmount(
-            borrowRequestId
-        );
+        uint256 amountFunded = borrowRequests[borrowRequestId].amountFunded;
+        uint256 borrowRequestAmount = borrowRequests[borrowRequestId].amount;
 
         if (amount + amountFunded >= borrowRequestAmount) {
             createLoan(borrowRequestId);
@@ -148,7 +195,9 @@ contract P2PLending {
                 msg.sender
             );
             // transfer funds to BorrowRequest contract
-            address payable receipient = payable(address(borrowRequestContract));
+            address payable receipient = payable(
+                address(borrowRequestContract)
+            );
             receipient.transfer(amount - leftover);
         } else {
             borrowRequestContract.fundBorrowRequest(
@@ -157,16 +206,18 @@ contract P2PLending {
                 msg.sender
             );
             // transfer funds to BorrowRequest contract
-            address payable receipient = payable(address(borrowRequestContract));
+            address payable receipient = payable(
+                address(borrowRequestContract)
+            );
             receipient.transfer(amount);
         }
     }
 
     function createLoan(uint borrowRequestId) public {
-        uint256 interest = borrowRequestContract.getInterest(borrowRequestId);
-        uint256 duration = borrowRequestContract.getDuration(borrowRequestId);
-        uint256 amount = borrowRequestContract.getAmount(borrowRequestId);
-        address borrower = borrowRequestContract.getBorrower(borrowRequestId);
+        uint256 interest = borrowRequests[borrowRequestId].interest;
+        uint256 duration = borrowRequests[borrowRequestId].duration;
+        uint256 amount = borrowRequests[borrowRequestId].amount;
+        address borrower = borrowRequests[borrowRequestId].borrower;
 
         uint256 repaymentAmount = amount * (1 + interest / 100);
 
@@ -183,16 +234,22 @@ contract P2PLending {
         //update loanToBorrowReqMapping
         loanToBorrowReqMapping[loanCount] = borrowRequestId;
         //set borrowreq as inactive
-        borrowRequestContract.toggleInactive(borrowRequestId);
+        borrowRequests[borrowRequestId].active = false;
 
         emit LoanCreated(loanCount);
     }
 
-    function withdrawFundsFromLoans(uint loanId) validLoanId(loanId) onlyBorrower(loanId) public {
+    function withdrawFundsFromLoans(
+        uint loanId
+    ) public validLoanId(loanId) onlyBorrower(loanId) {
         uint256 borrowRequestId = loanToBorrowReqMapping[loanId];
         address payable borrower = payable(msg.sender);
-        borrowRequestContract.withdrawFromBorrowRequest(borrowRequestId, borrower);
-
+        // borrowRequestContract.withdrawFromBorrowRequest(
+        //     borrowRequestId,
+        //     borrower
+        // );
+        borrowRequests[borrowRequestId].withdrawn = true;
+        borrower.transfer(borrowRequests[borrowRequestId].amount);
     }
 
     function getLoanInfo(
@@ -240,7 +297,11 @@ contract P2PLending {
         uint256 collateral = borrowReqToCollateralAmountMapping[
             loanToBorrowReqMapping[loanId]
         ];
-        BloTokenContract.transferBloToken(address(this), msg.sender, collateral);
+        BloTokenContract.transferBloToken(
+            address(this),
+            msg.sender,
+            collateral
+        );
         // change in status
         loans[loanId].repaid = true;
         // need to look up borrow req and set it as inactive
@@ -251,18 +312,19 @@ contract P2PLending {
 
     function revokeBorrowRequestId(uint borrowRequestId) public {
         require(
-            borrowRequestContract.getIsActive(borrowRequestId),
+            borrowRequests[borrowRequestId].active,
             "Can only revoke active loans"
         );
         require(
-            borrowRequestContract.getBorrower(borrowRequestId) == msg.sender,
+            borrowRequests[borrowRequestId].borrower == msg.sender,
             "Only borrower permitted to revoke borrow request."
         );
         // iterate through lenders and send them back their money
-        BorrowRequest.LenderInfo[]
-            memory lenderInfoArray = borrowRequestContract.getLenders(
-                borrowRequestId
-            );
+        // BorrowRequest.LenderInfo[]
+        //     memory lenderInfoArray = borrowRequestContract.getLenders(
+        //         borrowRequestId
+        //     );
+        LenderInfo[] memory lenderInfoArray = funders[borrowRequestId];
         for (uint256 i = 0; i < lenderInfoArray.length; i++) {
             payable(lenderInfoArray[i].lenderAddr).transfer(
                 lenderInfoArray[i].lentAmt
@@ -296,5 +358,18 @@ contract P2PLending {
             repaymentDeadline > block.timestamp,
             "Repayment date must be in the future"
         );
+    }
+
+    function checkAddressExists(
+        address _targetAddress,
+        uint256 borrowRequestId
+    ) public view returns (bool) {
+        LenderInfo[] memory lenderInfoArray = funders[borrowRequestId];
+        for (uint256 i = 0; i < lenderInfoArray.length; i++) {
+            if (lenderInfoArray[i].lenderAddr == _targetAddress) {
+                return true;
+            }
+        }
+        return false;
     }
 }
