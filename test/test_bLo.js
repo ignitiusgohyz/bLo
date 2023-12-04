@@ -187,19 +187,12 @@ contract("P2PLending", function (accounts) {
     const secondLenderAccount = accounts[5];
     const initialBalanceLender = new BigNumber(await web3.eth.getBalance(lenderAccount));
     const initialBalanceSecondLender = new BigNumber(await web3.eth.getBalance(secondLenderAccount));
-    console.log(initialBalanceLender.toNumber());
-    console.log(initialBalanceSecondLender.toNumber());
-    const amountToPay = web3.utils.toWei("1", "ether");
+    const amountToPay = web3.utils.toWei("1.1", "ether");
     const loan = await p2pLendingInstance.getLoanInfo(1);
     const supposedBorrower = loan.borrower;
     const initialBloBalance = await bloTokenInstance.checkCredit({
       from: borrowerAccount,
     });
-    console.log("Initital bLo balance:", initialBloBalance.toNumber());
-    console.log("Supposed Borrower:", supposedBorrower);
-    console.log("Actual Borrower:", borrowerAccount);
-    console.log(loan.interest);
-    console.log(new BigNumber(loan.repaymentAmount));
     assert.equal(
       supposedBorrower,
       borrowerAccount,
@@ -213,7 +206,6 @@ contract("P2PLending", function (accounts) {
     const updatedBloBalance = await bloTokenInstance.checkCredit({
       from: borrowerAccount,
     });
-    console.log("Updated bLo balance", updatedBloBalance.toNumber());
     assert.equal(
       updatedBloBalance.toNumber(),
       initialBloBalance.toNumber() + 50,
@@ -221,14 +213,12 @@ contract("P2PLending", function (accounts) {
     );
     const updatedBalanceLender = new BigNumber(await web3.eth.getBalance(lenderAccount));
     const updatedBalanceSecondLender = new BigNumber(await web3.eth.getBalance(secondLenderAccount));
-    // const expectedBalance = initialBalanceLender.plus(web3.utils.toWei("0.5", "ether"));
-    // const variance = new BigNumber(web3.utils.toWei("0.001", "ether")); // Adjust as needed
-    // const isWithinVariance = updatedBalanceLender.isGreaterThanOrEqualTo(expectedBalance.minus(variance)) &&
-    //                        updatedBalanceLender.isLessThanOrEqualTo(expectedBalance.plus(variance));
-    //                        assert.equal(isWithinVariance, true, "Final balance not within expected range");
-    console.log(updatedBalanceLender.toNumber());
-    console.log(updatedBalanceSecondLender.toNumber());
-    // truffleAssert.eventEmitted(result, "LenderPaid");
-    // assert equals for the transfer of eth
+    const repaid = new BigNumber(web3.utils.toWei("0.55", "ether"));
+    assert.equal((initialBalanceLender.plus(repaid)).toNumber(), updatedBalanceLender.toNumber(), "Not balanced");
+    assert.equal((initialBalanceSecondLender.plus(repaid)).toNumber(), updatedBalanceSecondLender.toNumber(), "Not balanced");
+    const updatedLoan = await p2pLendingInstance.getLoanInfo(1);
+    assert.equal(updatedLoan.repaid, true, "Loan repayment status not updated successfully.")
+    truffleAssert.eventEmitted(result, "LoanRepaid");
   });
+
 });

@@ -187,7 +187,7 @@ contract P2PLending {
         uint256 amount = borrowRequestContract.getAmount(borrowRequestId);
         address borrower = borrowRequestContract.getBorrower(borrowRequestId);
 
-        uint256 repaymentAmount = amount * (1 + interest / 100);
+        uint256 repaymentAmount = ((amount * (100 + interest)) / 100);
 
         Loan memory newLoan = Loan(
             amount,
@@ -266,8 +266,8 @@ contract P2PLending {
         // transferring of $$$$ to individual lenders
         LenderInfo[] storage lenderInfoArray = lenders[loanId];
         for (uint256 i = 0; i < lenderInfoArray.length; i++) {
-            uint256 totalAmount = lenderInfoArray[i].lentAmt *
-                (1 + (loans[loanId].interest / 100));
+            uint256 totalAmount = ((lenderInfoArray[i].lentAmt *
+                (100 + loans[loanId].interest)) / 100);
             payable(lenderInfoArray[i].lenderAddr).transfer(totalAmount);
         }
         // transferring of collateral to the borrower
