@@ -59,7 +59,7 @@ contract ERC20 {
     mapping(address => mapping(address => uint256)) internal allowed;
     mapping(address => uint256) balances;
 
-    string public constant name = "bLoToken";
+    string public constant name = "BloToken";
     string public constant symbol = "bLo";
     uint8 public constant decimals = 18;
     uint256 totalSupply_;

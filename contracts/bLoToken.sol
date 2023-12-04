@@ -32,7 +32,14 @@ contract BloToken {
         return erc20Contract.balanceOf(msg.sender);
     }
 
-    function transferBloToken(address from, address to, uint256 collateral) public payable {
+    // function transferBloToken(address from, address to, uint256 collateral) public payable {
+    //     erc20Contract.transferFrom(from, to, collateral);
+    // }
+    function transferBloToken(address to, uint256 value) public payable {
+         erc20Contract.transfer(to, value);
+    }
+
+    function transferBloTokenBack(address from, address to, uint256 collateral) public payable {
         erc20Contract.transferFrom(from, to, collateral);
     }
 }
