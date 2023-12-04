@@ -35,6 +35,12 @@ contract P2PLending {
     event LoanCreated(uint loanId);
     event LoanFunded(uint loanId);
     event LoanRepaid(uint loanId);
+    event LenderPaid(uint loanId, address lenderAddr, uint lentAmt);
+    event Recevied(address, uint);
+
+    receive() external payable {
+        emit Recevied(msg.sender, msg.value);
+    }
 
     // this modifier should be shifted to borrowrequest
     modifier onlyUnrepaidLoan(uint loanId) {
@@ -142,7 +148,7 @@ contract P2PLending {
         );
 
         if (amount + amountFunded >= borrowRequestAmount) {
-            createLoan(borrowRequestId);
+            // createLoan(borrowRequestId);
 
             uint256 leftover = borrowRequestAmount - (amount + amountFunded);
             if (leftover > 0) {
@@ -159,6 +165,8 @@ contract P2PLending {
                 address(borrowRequestContract.getBorrower(borrowRequestId))
             );
             receipient.transfer(amount - leftover);
+
+            createLoan(borrowRequestId);
         } else {
             borrowRequestContract.fundBorrowRequest(
                 borrowRequestId,
@@ -195,6 +203,17 @@ contract P2PLending {
         loanToBorrowReqMapping[loanCount] = borrowRequestId;
         //set borrowreq as inactive
         borrowRequestContract.toggleInactive(borrowRequestId);
+        BorrowRequest.LenderInfo[]
+            memory lenderInfoArray = borrowRequestContract.getLenders(
+                borrowRequestId
+            );
+        for (uint i = 0; i < lenderInfoArray.length; i++) {
+            LenderInfo memory info = LenderInfo(
+                lenderInfoArray[i].lenderAddr,
+                lenderInfoArray[i].lentAmt
+            );
+            lenders[loanCount].push(info);
+        }
 
         emit LoanCreated(loanCount);
     }
@@ -247,9 +266,9 @@ contract P2PLending {
         // transferring of $$$$ to individual lenders
         LenderInfo[] storage lenderInfoArray = lenders[loanId];
         for (uint256 i = 0; i < lenderInfoArray.length; i++) {
-            payable(lenderInfoArray[i].lenderAddr).transfer(
-                lenderInfoArray[i].lentAmt * (1 + loans[loanId].interest)
-            );
+            uint256 totalAmount = lenderInfoArray[i].lentAmt *
+                (1 + (loans[loanId].interest / 100));
+            payable(lenderInfoArray[i].lenderAddr).transfer(totalAmount);
         }
         // transferring of collateral to the borrower
         uint256 collateral = borrowReqToCollateralAmountMapping[
