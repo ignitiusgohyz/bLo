@@ -140,11 +140,13 @@ contract("P2PLending", function (accounts) {
   it("Lender can fund active borrow request", async () => {
     const lenderAccount = accounts[4];
     const amountToFund = web3.utils.toWei("0.5", "ether");
+    const initialBalance = await web3.eth.getBalance(borrowRequestInstance.address);
+    console.log(BigNumber(initialBalance));
     await p2pLendingInstance.fundBorrowRequest(0, {
       from: lenderAccount,
       value: amountToFund,
     });
-
+    
     // check that lender got added into lenders mapping of the specific borrow request
     // get LenderInfo[] of borrow request by borrow request id
     const exists = await borrowRequestInstance.checkAddressExists(
@@ -180,11 +182,38 @@ contract("P2PLending", function (accounts) {
       "Loan not created"
     );
   });
+
+  it("Borrower can withdraw from the loan", async() => {
+    const borrowerAccount = accounts[1];
+    
+    const initialCount = await p2pLendingInstance.loanCount();
+
+    const borrowedAmt = await borrowRequestInstance.getAmount(0);
+    console.log(BigNumber(borrowedAmt));
+
+
+    const initialBalance = new BigNumber(await web3.eth.getBalance(borrowerAccount));
+    await p2pLendingInstance.withdrawFundsFromLoans(0, {from: borrowerAccount});
+
+ 
+    const finalBalance = new BigNumber(await web3.eth.getBalance(borrowerAccount));
+    const withdrawn = await borrowRequestInstance.getWithdrawn(0);
+    const expectedFinalBalance = initialBalance.plus(new BigNumber(borrowedAmt));
+
+    // Allow for a small variance due to gas fees or other factors
+    const variance = new BigNumber(web3.utils.toWei("0.01", "ether")); // Adjust as needed
+    const isWithinVariance = finalBalance.isGreaterThanOrEqualTo(expectedFinalBalance.minus(variance)) &&
+                           finalBalance.isLessThanOrEqualTo(expectedFinalBalance.plus(variance));
+
+    assert.equal(isWithinVariance, true, "Final balance not within expected range");
+    assert.equal(withdrawn, true, "Funds not withdrawn");
+
+  })
   
   it("Borrower can repay his own loan", async () => {
     const borrowerAccount = accounts[1];
     const amountToPay = web3.utils.toWei("1", "ether");
-    const loan = await p2pLendingInstance.getLoanInfo(1);
+    const loan = await p2pLendingInstance.getLoanInfo(0);
     const supposedBorrower = loan.borrower;
     console.log("Supposed Borrower:", supposedBorrower);
     console.log("Actual Borrower:", borrowerAccount);
@@ -193,7 +222,7 @@ contract("P2PLending", function (accounts) {
       borrowerAccount,
       "address different"
     )
-    const result = await p2pLendingInstance.repayLoan(1, {
+    const result = await p2pLendingInstance.repayLoan(0, {
       from: borrowerAccount,
       value: amountToPay,
     });

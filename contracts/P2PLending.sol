@@ -155,10 +155,13 @@ contract P2PLending {
                 msg.sender
             );
             // transfer funds to borrower
-            address payable receipient = payable(
-                address(borrowRequestContract.getBorrower(borrowRequestId))
-            );
-            receipient.transfer(amount - leftover);
+            // address payable receipient = payable(
+            //     address(borrowRequestContract.getBorrower(borrowRequestId))
+            // );
+            // receipient.transfer(amount - leftover);
+
+             payable(address(borrowRequestContract)).transfer(amount - leftover);
+            
         } else {
             borrowRequestContract.fundBorrowRequest(
                 borrowRequestId,
@@ -166,10 +169,12 @@ contract P2PLending {
                 msg.sender
             );
             // transfer funds to borrower
-            address payable receipient = payable(
-                address(borrowRequestContract.getBorrower(borrowRequestId))
-            );
-            receipient.transfer(amount);
+            // address payable receipient = payable(
+            //     address(borrowRequestContract.getBorrower(borrowRequestId))
+            // );
+            // receipient.transfer(amount);
+
+            payable(address(borrowRequestContract)).transfer(amount);
         }
     }
 
@@ -189,8 +194,9 @@ contract P2PLending {
             borrower,
             false
         );
-        loanCount++;
+        
         loans[loanCount] = newLoan;
+        loanCount++;
         //update loanToBorrowReqMapping
         loanToBorrowReqMapping[loanCount] = borrowRequestId;
         //set borrowreq as inactive

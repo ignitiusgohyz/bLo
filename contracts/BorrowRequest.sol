@@ -93,7 +93,7 @@ contract BorrowRequest {
         uint256 borrowRequestId,
         uint256 fundingAmount,
         address lender
-    ) external payable {
+    ) public {
         borrowRequest storage br = borrowRequests[borrowRequestId];
 
         LenderInfo memory info = LenderInfo(lender, fundingAmount);
@@ -106,8 +106,9 @@ contract BorrowRequest {
         }
     }
 
-    function withdrawFromBorrowRequest(uint borrowRequestId, address payable borrower) validBorrowRequestId(borrowRequestId) onlyBorrower(borrowRequestId, borrower) external payable {
-        borrowRequests[borrowRequestId].withdrawn = true;
+    function withdrawFromBorrowRequest(uint borrowRequestId, address payable borrower) validBorrowRequestId(borrowRequestId)  external payable {
+        borrowRequest storage br = borrowRequests[borrowRequestId];
+        br.withdrawn = true;
         borrower.transfer(borrowRequests[borrowRequestId].amount);
     }
 
@@ -197,4 +198,19 @@ contract BorrowRequest {
     {
         return lenders[borrowRequestId];
     }
+
+    function getWithdrawn(uint256 borrowRequestId)
+        public
+        view
+        validBorrowRequestId(borrowRequestId)
+        returns (bool withdrawn)
+    {
+        return borrowRequests[borrowRequestId].withdrawn;
+    }
+
+    event Received(address, uint);
+    receive() external payable {
+        emit Received(msg.sender, msg.value);
+    }
+
 }
