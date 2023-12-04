@@ -22,8 +22,8 @@ contract P2PLending {
         uint256 lentAmt;
     }
 
+    BloToken bloTokenContract;
     BorrowRequest borrowRequestContract;
-    BloToken BloTokenContract;
     uint public loanCount = 0;
 
     mapping(uint256 => LenderInfo[]) public lenders;
@@ -81,8 +81,13 @@ contract P2PLending {
     }
 
     modifier validLoanId(uint256 loanId) {
-        require(loanId < loanCount);
+        require(loanId < loanCount, "Must be valid Loan ID");
         _;
+    }
+
+    constructor(BloToken bloTokenAddr, BorrowRequest borrowRequestAddr) public {
+        bloTokenContract = bloTokenAddr;
+        borrowRequestContract = borrowRequestAddr;
     }
 
     function createNewBorrowRequest(
@@ -115,7 +120,7 @@ contract P2PLending {
         borrowReqToCollateralAmountMapping[borrowRequestId] = bloTokenCollateral;
 
         //send collateral to address
-        BloTokenContract.transferBloToken(msg.sender, address(this), bloTokenCollateral);
+        bloTokenContract.transferBloToken(msg.sender, address(this), bloTokenCollateral);
     }
 
     function fundBorrowRequest(
@@ -240,7 +245,7 @@ contract P2PLending {
         uint256 collateral = borrowReqToCollateralAmountMapping[
             loanToBorrowReqMapping[loanId]
         ];
-        BloTokenContract.transferBloToken(address(this), msg.sender, collateral);
+        bloTokenContract.transferBloToken(address(this), msg.sender, collateral);
         // change in status
         loans[loanId].repaid = true;
         // need to look up borrow req and set it as inactive

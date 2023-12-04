@@ -30,7 +30,7 @@ contract BorrowRequest {
     mapping(uint256 => LenderInfo[]) public lenders;
 
     modifier validBorrowRequestId(uint256 borrowRequestId) {
-        require(borrowRequestId < borrowRequestCount);
+        require(borrowRequestId < borrowRequestCount, "Must be valid Borrow Request ID");
         _;
     }
 
