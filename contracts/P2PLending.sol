@@ -120,7 +120,7 @@ contract P2PLending {
         borrowReqToCollateralAmountMapping[borrowRequestId] = bloTokenCollateral;
 
         //send collateral to address
-        bloTokenContract.transferBloToken(msg.sender, address(this), bloTokenCollateral);
+        bloTokenContract.transferBloToken(address(this), bloTokenCollateral);
     }
 
     function fundBorrowRequest(
@@ -152,8 +152,8 @@ contract P2PLending {
                 amount - leftover,
                 msg.sender
             );
-            // transfer funds to BorrowRequest contract
-            address payable receipient = payable(address(borrowRequestContract));
+            // transfer funds to borrower
+            address payable receipient = payable(address(borrowRequestContract.getBorrower(borrowRequestId)));
             receipient.transfer(amount - leftover);
         } else {
             borrowRequestContract.fundBorrowRequest(
@@ -161,8 +161,8 @@ contract P2PLending {
                 amount,
                 msg.sender
             );
-            // transfer funds to BorrowRequest contract
-            address payable receipient = payable(address(borrowRequestContract));
+            // transfer funds to borrower
+            address payable receipient = payable(address(borrowRequestContract.getBorrower(borrowRequestId)));
             receipient.transfer(amount);
         }
     }
@@ -245,7 +245,7 @@ contract P2PLending {
         uint256 collateral = borrowReqToCollateralAmountMapping[
             loanToBorrowReqMapping[loanId]
         ];
-        bloTokenContract.transferBloToken(address(this), msg.sender, collateral);
+        bloTokenContract.transferBloTokenBack(address(this), msg.sender, collateral);
         // change in status
         loans[loanId].repaid = true;
         // need to look up borrow req and set it as inactive

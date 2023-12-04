@@ -83,34 +83,6 @@ contract("P2PLending", function (accounts) {
     );
   });
 
-  it("Create Borrow Request from P2PLending contract", async () => {
-    const initialBorrowReqCount =
-      await borrowRequestInstance.borrowRequestCount();
-
-    const amount = web3.utils.toWei("1", "ether");
-    const currentTimestamp = Math.floor(new Date().getTime() / 1000);
-    const repaymentDeadline = currentTimestamp + 24 * 60 * 60;
-    const interest = 10;
-    const duration = 30;
-    const bloTokenCollateral = 50;
-
-    await p2pLendingInstance.createNewBorrowRequest(
-      amount,
-      repaymentDeadline,
-      interest,
-      duration,
-      bloTokenCollateral,
-      { from: accounts[4] }
-    );
-
-    const newCount = await borrowRequestInstance.borrowRequestCount();
-    assert.equal(
-      newCount.toNumber(),
-      initialBorrowReqCount.toNumber() + 1,
-      "Borrow request not created"
-    );
-  });
-
   it("should create a borrow request and send collateral to the contract", async () => {
     // Account to test with
     const borrowerAccount = accounts[1];
@@ -167,11 +139,8 @@ contract("P2PLending", function (accounts) {
 
   it("Lender can fund active borrow request", async () => {
     const lenderAccount = accounts[4];
-
     const amountToFund = web3.utils.toWei("0.5", "ether");
-
-    // call fundBorrowRequest()
-    await p2pLendingInstance.fundBorrowRequest(1, {
+    await p2pLendingInstance.fundBorrowRequest(0, {
       from: lenderAccount,
       value: amountToFund,
     });
@@ -180,7 +149,7 @@ contract("P2PLending", function (accounts) {
     // get LenderInfo[] of borrow request by borrow request id
     const exists = await borrowRequestInstance.checkAddressExists(
       lenderAccount,
-      borrowRequestId
+      0
     );
     assert.equal(
       exists,
