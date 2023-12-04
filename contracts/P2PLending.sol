@@ -160,13 +160,8 @@ contract P2PLending {
                 amount - leftover,
                 msg.sender
             );
-            // transfer funds to borrower
-            // address payable receipient = payable(
-            //     address(borrowRequestContract.getBorrower(borrowRequestId))
-            // );
-            // receipient.transfer(amount - leftover);
-
-             payable(address(borrowRequestContract)).transfer(amount - leftover);
+            // transfer funds to borrowRequestContract
+            payable(address(borrowRequestContract)).transfer(amount - leftover);
             createLoan(borrowRequestId);
             
         } else {
@@ -175,12 +170,7 @@ contract P2PLending {
                 amount,
                 msg.sender
             );
-            // transfer funds to borrower
-            // address payable receipient = payable(
-            //     address(borrowRequestContract.getBorrower(borrowRequestId))
-            // );
-            // receipient.transfer(amount);
-
+           // transfer funds to borrowRequestContract
             payable(address(borrowRequestContract)).transfer(amount);
         }
     }
@@ -203,7 +193,7 @@ contract P2PLending {
         );
         
         loans[loanCount] = newLoan;
-        loanCount++;
+        
         //update loanToBorrowReqMapping
         loanToBorrowReqMapping[loanCount] = borrowRequestId;
         //set borrowreq as inactive
@@ -219,6 +209,7 @@ contract P2PLending {
             );
             lenders[loanCount].push(info);
         }
+        loanCount++;
 
         emit LoanCreated(loanCount);
     }
@@ -339,5 +330,16 @@ contract P2PLending {
             repaymentDeadline > block.timestamp,
             "Repayment date must be in the future"
         );
+    }
+
+    function getLenders(
+        uint256 loanId
+    )
+        public
+        view
+        validLoanId(loanId)
+        returns (LenderInfo[] memory lender)
+    {
+        return lenders[loanId];
     }
 }

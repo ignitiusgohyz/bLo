@@ -86,7 +86,7 @@ contract("P2PLending", function (accounts) {
   it("should create a borrow request and send collateral to the contract", async () => {
     // Account to test with
     const borrowerAccount = accounts[1];
-    console.log("BORROWER ACCOUNT:" + borrowerAccount);
+    
 
     // Initial borrow request count
     const initialBorrowRequestCount =
@@ -123,6 +123,7 @@ contract("P2PLending", function (accounts) {
       initialBorrowRequestCount.toNumber() + 1,
       "Borrow request not created"
     );
+    
 
     // Verify that collateral is sent to the contract
     const newContractCollateral = await bloTokenInstance.checkCredit({
@@ -139,7 +140,7 @@ contract("P2PLending", function (accounts) {
     const lenderAccount = accounts[4];
     const amountToFund = web3.utils.toWei("0.5", "ether");
     const initialBalance = await web3.eth.getBalance(borrowRequestInstance.address);
-    console.log(BigNumber(initialBalance));
+    
     await p2pLendingInstance.fundBorrowRequest(0, {
       from: lenderAccount,
       value: amountToFund,
@@ -174,7 +175,7 @@ contract("P2PLending", function (accounts) {
     );
     truffleAssert.eventEmitted(secondFunding, "LoanCreated");
     const newCount = await p2pLendingInstance.loanCount();
-    console.log(newCount.toNumber());
+    
     assert.equal(
       newCount.toNumber(),
       initialCount.toNumber() + 1,
@@ -187,7 +188,7 @@ contract("P2PLending", function (accounts) {
     
 
     const borrowedAmt = await borrowRequestInstance.getAmount(0);
-    console.log(BigNumber(borrowedAmt));
+    
 
 
     const initialBalance = new BigNumber(await web3.eth.getBalance(borrowerAccount));
@@ -216,6 +217,16 @@ contract("P2PLending", function (accounts) {
     const initialBalanceSecondLender = new BigNumber(await web3.eth.getBalance(secondLenderAccount));
     const amountToPay = web3.utils.toWei("1.1", "ether");
     const loan = await p2pLendingInstance.getLoanInfo(0);
+    const collateralAmount = (await borrowRequestInstance.getCollateralAmount(0)).toNumber();
+    const loanLenders = await p2pLendingInstance.getLenders(0);
+   
+    const lenderAddresses = [lenderAccount, secondLenderAccount]
+    const filteredLoanLenders = loanLenders.filter(entry => lenderAddresses.includes(entry[0]));
+    const lentAmtValues = filteredLoanLenders.map(entry => entry[1]);
+    
+    const firstLenderRepayAmt = ((lentAmtValues[0] * (100 + loan.interest.toNumber())) / 100);                                
+    const secondLenderRepayAmt = ((lentAmtValues[1] * (100 + loan.interest.toNumber())) / 100);
+   
     const supposedBorrower = loan.borrower;
     const initialBloBalance = await bloTokenInstance.checkCredit({
       from: borrowerAccount,
@@ -235,22 +246,20 @@ contract("P2PLending", function (accounts) {
     });
     assert.equal(
       updatedBloBalance.toNumber(),
-      initialBloBalance.toNumber() + 50,
+      initialBloBalance.toNumber() + collateralAmount,
       "Collateral not returned to borrower correctly."
     );
 
     
     const updatedBalanceLender = new BigNumber(await web3.eth.getBalance(lenderAccount));
     const updatedBalanceSecondLender = new BigNumber(await web3.eth.getBalance(secondLenderAccount));
- 
-    const repaid = new BigNumber(web3.utils.toWei("0.55", "ether"));
-    console.log(initialBalanceLender);
-    console.log(repaid);
-    console.log(updatedBalanceLender);
-
-    assert.equal((initialBalanceLender.plus(repaid)).toNumber(), updatedBalanceLender.toNumber(), "Not balanced");
-    assert.equal((initialBalanceSecondLender.plus(repaid)).toNumber(), updatedBalanceSecondLender.toNumber(), "Not balanced");
-    const updatedLoan = await p2pLendingInstance.getLoanInfo(1);
+    
+    
+    // const repaid = new BigNumber(web3.utils.toWei("0.55", "ether"));
+   
+    assert.equal((initialBalanceLender.plus(firstLenderRepayAmt)).toNumber(), updatedBalanceLender.toNumber(), "Not balanced");
+    assert.equal((initialBalanceSecondLender.plus(secondLenderRepayAmt)).toNumber(), updatedBalanceSecondLender.toNumber(), "Not balanced");
+    const updatedLoan = await p2pLendingInstance.getLoanInfo(0);
     assert.equal(updatedLoan.repaid, true, "Loan repayment status not updated successfully.")
     truffleAssert.eventEmitted(result, "LoanRepaid");
   });

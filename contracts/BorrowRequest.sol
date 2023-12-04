@@ -214,6 +214,15 @@ contract BorrowRequest {
         return borrowRequests[borrowRequestId].withdrawn;
     }
 
+    function getCollateralAmount(uint256 borrowRequestId)
+        public
+        view
+        validBorrowRequestId(borrowRequestId)
+        returns (uint256 collateralAmount)
+    {
+        return borrowRequests[borrowRequestId].collateral;
+    }
+
     event Received(address, uint);
     receive() external payable {
         emit Received(msg.sender, msg.value);
