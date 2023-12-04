@@ -44,6 +44,7 @@ contract BorrowRequest {
 
     /** @dev Events */
     event BorrowRequestCreated(
+        uint256 borrowRequestId,
         uint256 amount,
         address borrower,
         uint256 interest,
@@ -78,6 +79,7 @@ contract BorrowRequest {
         borrowRequests[newBorrowReqId] = newBorrowRequest;
 
         emit BorrowRequestCreated(
+            newBorrowReqId,
             amount,
             borrower,
             interest,
