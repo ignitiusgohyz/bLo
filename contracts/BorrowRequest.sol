@@ -30,7 +30,10 @@ contract BorrowRequest {
     mapping(uint256 => LenderInfo[]) public lenders;
 
     modifier validBorrowRequestId(uint256 borrowRequestId) {
-        require(borrowRequestId < borrowRequestCount, "Must be valid Borrow Request ID");
+        require(
+            borrowRequestId < borrowRequestCount,
+            "Must be valid Borrow Request ID"
+        );
         _;
     }
 
@@ -60,9 +63,9 @@ contract BorrowRequest {
         address borrower,
         uint256 bloTokenCollateral,
         uint256 trustScore
-    ) public returns(uint256) {
+    ) public returns (uint256) {
         uint256 newBorrowReqId = borrowRequestCount++;
-       
+
         borrowRequest memory newBorrowRequest = borrowRequest(
             amount,
             interest,
@@ -117,14 +120,17 @@ contract BorrowRequest {
         borrowRequests[borrowRequestId].active = false;
     }
 
-    function checkAddressExists(address _targetAddress, uint256 borrowRequestId) public view returns (bool) {
-            LenderInfo[] memory lenderInfoArray = lenders[borrowRequestId];
+    function checkAddressExists(
+        address _targetAddress,
+        uint256 borrowRequestId
+    ) public view returns (bool) {
+        LenderInfo[] memory lenderInfoArray = lenders[borrowRequestId];
         for (uint256 i = 0; i < lenderInfoArray.length; i++) {
             if (lenderInfoArray[i].lenderAddr == _targetAddress) {
-                return true; 
+                return true;
             }
         }
-        return false; 
+        return false;
     }
 
     function getBorrower(
