@@ -120,14 +120,14 @@ contract ERC20 {
     ) public returns (bool) {
         require(_to != address(0));
         require(_value <= balances[_from], "From doesn't have enough balance");
-        require(
-            _value <= allowed[_from][tx.origin],
-            "Not allowed to spend this much"
-        );
+        // require(
+        //     _value <= allowed[_from][tx.origin],
+        //     "Not allowed to spend this much"
+        // );
 
         balances[_from] = balances[_from].sub(_value);
         balances[_to] = balances[_to].add(_value);
-        allowed[_from][tx.origin] = allowed[_from][tx.origin].sub(_value);
+        // allowed[_from][tx.origin] = allowed[_from][tx.origin].sub(_value);
         emit Transfer(_from, _to, _value);
         return true;
     }

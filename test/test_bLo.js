@@ -151,10 +151,51 @@ contract("P2PLending", function (accounts) {
       lenderAccount,
       0
     );
+    const initialCount = await p2pLendingInstance.loanCount();
+    const secondLenderAccount = accounts[5];
+    const secondAmountToFund = web3.utils.toWei("0.5", "ether");
+    const secondFunding = await p2pLendingInstance.fundBorrowRequest(0, {
+      from: secondLenderAccount,
+      value: secondAmountToFund,
+    });
+    const secondLenderExists = await borrowRequestInstance.checkAddressExists(
+      secondLenderAccount,
+      0
+    );
     assert.equal(
       exists,
       true,
-      "Lender not in lenders list, funding did not execute correctly"
+      "Lender 1 not in lenders list, funding did not execute correctly"
     );
+    assert.equal(
+      secondLenderExists,
+      true,
+      "Lender 2 not in lenders list, funding did not execute correctly"
+    );
+    truffleAssert.eventEmitted(secondFunding, "LoanCreated");
+    const newCount = await p2pLendingInstance.loanCount();
+    assert.equal(
+      newCount.toNumber(),
+      initialCount.toNumber() + 1,
+      "Loan not created"
+    );
+  });
+  
+  it("Borrower can repay his own loan", async () => {
+    const borrowerAccount = accounts[1];
+    const amountToPay = web3.utils.toWei("1", "ether");
+    const loan = await p2pLendingInstance.getLoanInfo(1);
+    const supposedBorrower = loan.borrower;
+    console.log("Supposed Borrower:", supposedBorrower);
+    console.log("Actual Borrower:", borrowerAccount);
+    assert.equal(
+      supposedBorrower,
+      borrowerAccount,
+      "address different"
+    )
+    const result = await p2pLendingInstance.repayLoan(1, {
+      from: borrowerAccount,
+      value: amountToPay,
+    });
   });
 });
