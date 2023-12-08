@@ -54,7 +54,11 @@ contract BorrowRequest {
         uint256 collateral,
         uint8 duration
     );
-
+/**
+    Function to create a new borrow request
+    Inputs - amount, repaymentDeadLine, interest, duration, borrower, amount of collateral, trustscore
+    Returns - borrowReqId
+ */
     function createBorrowRequest(
         uint256 amount,
         uint256 repaymentDeadline,
@@ -91,7 +95,10 @@ contract BorrowRequest {
         );
         return newBorrowReqId;
     }
-
+/**
+    Function for lenders to fund a borrow request
+    Inputs - borrowreqId, funding amount, addres of lender
+ */
     function fundBorrowRequest(
         uint256 borrowRequestId,
         uint256 fundingAmount,
@@ -108,7 +115,9 @@ contract BorrowRequest {
             toggleInactive(borrowRequestId);
         }
     }
-
+/**
+    Function to withdraw from borrow request
+ */
     function withdrawFromBorrowRequest(uint borrowRequestId, address payable borrower) 
     validBorrowRequestId(borrowRequestId) onlyBorrower(borrowRequestId, borrower)
      external payable {

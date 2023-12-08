@@ -31,18 +31,19 @@ contract P2PLending {
     mapping(address => uint256) public borrowerTrustScores;
     mapping(uint256 => uint256) borrowReqToCollateralAmountMapping;
     mapping(uint256 => uint256) loanToBorrowReqMapping;
+    mapping(uint256 => uint) loanToExpiryDateMapping;
 
     event LoanCreated(uint loanId);
     event LoanFunded(uint loanId);
     event LoanRepaid(uint loanId);
     event LenderPaid(uint loanId, address lenderAddr, uint lentAmt);
     event Recevied(address, uint);
+    event LoanExpired(uint loanId);
 
     receive() external payable {
         emit Recevied(msg.sender, msg.value);
     }
 
-    // this modifier should be shifted to borrowrequest
     modifier onlyUnrepaidLoan(uint loanId) {
         require(!loans[loanId].repaid, "This loan has not been repaid");
         _;
@@ -95,7 +96,10 @@ contract P2PLending {
         bloTokenContract = bloTokenAddr;
         borrowRequestContract = borrowRequestAddr;
     }
-
+/**
+    This function is to create a new Borrow Request. 
+    Inputs - request amount, repaymentdeadline, interest, duration, amount of collateral
+ */
     function createNewBorrowRequest(
         uint256 amount,
         uint256 repaymentDeadline,
@@ -110,6 +114,7 @@ contract P2PLending {
             bloTokenCollateral,
             repaymentDeadline
         );
+        // Sets trust score of borrower to default 50 if new borrower.
         if (borrowerTrustScores[msg.sender] == 0) {
             borrowerTrustScores[msg.sender] = 50; //set default
         }
@@ -130,6 +135,10 @@ contract P2PLending {
         //send collateral to address
         bloTokenContract.transferBloToken(address(this), bloTokenCollateral);
     }
+/**
+    This function is for lenders to fund a borrow request.
+    Input - borrowRequestId
+*/
 
     function fundBorrowRequest(
         uint256 borrowRequestId
@@ -163,7 +172,7 @@ contract P2PLending {
             // transfer funds to borrowRequestContract
             payable(address(borrowRequestContract)).transfer(amount - leftover);
             createLoan(borrowRequestId);
-            
+
         } else {
             borrowRequestContract.fundBorrowRequest(
                 borrowRequestId,
@@ -174,7 +183,11 @@ contract P2PLending {
             payable(address(borrowRequestContract)).transfer(amount);
         }
     }
-
+/**
+    Function to create a loan struct once a borrow request has been fully funded.
+    Inputs - borrowRequestId
+    Emits LoanCreated event
+ */
     function createLoan(uint borrowRequestId) public {
         uint256 interest = borrowRequestContract.getInterest(borrowRequestId);
         uint256 duration = borrowRequestContract.getDuration(borrowRequestId);
@@ -182,7 +195,7 @@ contract P2PLending {
         address borrower = borrowRequestContract.getBorrower(borrowRequestId);
 
         uint256 repaymentAmount = ((amount * (100 + interest)) / 100);
-
+// create new loan memory
         Loan memory newLoan = Loan(
             amount,
             interest,
@@ -191,9 +204,11 @@ contract P2PLending {
             borrower,
             false
         );
-        
+        //append loanid => Loan mapping
         loans[loanCount] = newLoan;
-        
+        //append loan to expiry date mapping by taking current time + duration or loan
+        loanToExpiryDateMapping[loanCount] = block.timestamp + duration * 86400;
+
         //update loanToBorrowReqMapping
         loanToBorrowReqMapping[loanCount] = borrowRequestId;
         //set borrowreq as inactive
@@ -202,6 +217,7 @@ contract P2PLending {
             memory lenderInfoArray = borrowRequestContract.getLenders(
                 borrowRequestId
             );
+        //update lenderinfo array
         for (uint i = 0; i < lenderInfoArray.length; i++) {
             LenderInfo memory info = LenderInfo(
                 lenderInfoArray[i].lenderAddr,
@@ -213,7 +229,10 @@ contract P2PLending {
 
         emit LoanCreated(loanCount);
     }
-
+/**
+    Function for borrower to withdraw funds from loan once it has been created
+    Input - loanId
+ */
     function withdrawFundsFromLoans(
         uint loanId
     ) public validLoanId(loanId) onlyBorrower(loanId) {
@@ -223,6 +242,10 @@ contract P2PLending {
             borrowRequestId,
             borrower
         );
+    }
+
+    function getLoanExpiryDate(uint loanId) public view returns(uint) {
+        return loanToExpiryDateMapping[loanId];
     }
 
     function getLoanInfo(
@@ -249,11 +272,45 @@ contract P2PLending {
             loan.repaid
         );
     }
+/**
+    Function to check if current date is past loan expiry date
+ */
+    function isLoanExpired(uint loanId) public view returns(bool) {
+        uint loanExpiryDate = loanToExpiryDateMapping[loanId];
+        uint currentDate = block.timestamp;
+        if (currentDate > loanExpiryDate) {
+            return true;
+        }
+        return false;
+    }
 
-    // only borrower can repay their own unrepaid loans -> checked with modifier
+    //function to manually set expiry date of loan for testing purposes only.
+    function setExpiryDate(uint loanId, uint date) public {
+        loanToExpiryDateMapping[loanId] = date;
+    }
+
+
+/**
+    Function for borrower to repay the loan before loan tenure
+ */
     function repayLoan(
         uint loanId
-    ) external payable onlyUnrepaidLoan(loanId) onlyBorrower(loanId) {
+    ) external payable onlyUnrepaidLoan(loanId) onlyBorrower(loanId) returns(bool) {
+        //check if loan is expired. If loan is expired, seize the collateral pledged and distribute to lenders.
+        if (isLoanExpired(loanId)) {
+            uint256 collat = borrowReqToCollateralAmountMapping[loanToBorrowReqMapping[loanId]];
+            LenderInfo[] storage lenderInfo = lenders[loanId];
+            uint256 totalLoanAmnt = loans[loanId].amount;
+            for (uint256 i = 0; i < lenderInfo.length; i++) {
+                address lenderAddr = lenderInfo[i].lenderAddr;
+                uint256 amnt = lenderInfo[i].lentAmt;
+                bloTokenContract.transferBloToken(lenderAddr, (amnt*collat)/totalLoanAmnt);
+            }
+            //update trust score of borrower
+            borrowerTrustScores[msg.sender] -= 20;
+            emit LoanExpired(loanId);
+            return true;
+        }
         // repayment amount must match the loan's repayment amount
         require(
             loans[loanId].repaymentAmount == msg.value,
@@ -281,8 +338,11 @@ contract P2PLending {
         borrowerTrustScores[msg.sender] += 10;
         // emit LoanRepaid
         emit LoanRepaid(loanId);
+        return true;
     }
-
+/**
+    Function for a borrower to revoke his borrow request
+ */
     function revokeBorrowRequestId(uint borrowRequestId) public {
         require(
             borrowRequestContract.getIsActive(borrowRequestId),
