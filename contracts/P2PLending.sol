@@ -278,7 +278,7 @@ contract P2PLending {
         // change in status
         loans[loanId].repaid = true;
         // need to look up borrow req and set it as inactive
-
+        borrowerTrustScores[msg.sender] += 10;
         // emit LoanRepaid
         emit LoanRepaid(loanId);
     }
@@ -341,5 +341,9 @@ contract P2PLending {
         returns (LenderInfo[] memory lender)
     {
         return lenders[loanId];
+    }
+
+    function getTrustScore(address borrower) public view returns(uint256) {
+        return borrowerTrustScores[borrower];
     }
 }

@@ -15,7 +15,7 @@ contract("BorrowRequest", (accounts) => {
   });
   console.log("Testing BorrowRequest contract");
 
-  it("test create a borrow request", async () => {
+  it("Create a borrow request", async () => {
     const amount = web3.utils.toWei("1", "ether");
     const currentTimestamp = Math.floor(new Date().getTime() / 1000);
     const repaymentDeadline = currentTimestamp + 24 * 60 * 60;
@@ -43,6 +43,17 @@ contract("BorrowRequest", (accounts) => {
       "Borrow request not created"
     );
   });
+
+  it("Check only borrower can withdraw borrow request", async() => {
+    const wrongBorrower = accounts[2];
+    let isLineExecutedHere = false;
+    try {
+      await borrowRequestInstance.withdrawFromBorrowRequest(0, wrongBorrower, {from: wrongBorrower});
+      isLineExecutedHere = true;
+    } catch(e) {
+      assert.equal(isLineExecutedHere, false, "Only borrower can withdraw from loan")
+    }
+  })
 });
 
 contract("P2PLending", function (accounts) {
@@ -53,7 +64,7 @@ contract("P2PLending", function (accounts) {
   });
   console.log("Testing P2P Lending contract");
 
-  it("should allow users to exchange ETH for bLo tokens", async () => {
+  it("Users able to exchange ETH for bLo tokens", async () => {
     const bloTokenInstance = await BloToken.deployed();
 
     // Account to test with
@@ -83,10 +94,10 @@ contract("P2PLending", function (accounts) {
     );
   });
 
-  it("should create a borrow request and send collateral to the contract", async () => {
+  it("Create a borrow request and send collateral to the contract", async () => {
     // Account to test with
     const borrowerAccount = accounts[1];
-    
+
 
     // Initial borrow request count
     const initialBorrowRequestCount =
@@ -123,7 +134,7 @@ contract("P2PLending", function (accounts) {
       initialBorrowRequestCount.toNumber() + 1,
       "Borrow request not created"
     );
-    
+
 
     // Verify that collateral is sent to the contract
     const newContractCollateral = await bloTokenInstance.checkCredit({
@@ -136,16 +147,31 @@ contract("P2PLending", function (accounts) {
     );
   });
 
+  it("Check borrower cant fund his own borrow request", async() => {
+    const borrowerAccount = accounts[1];
+    const amountToFund = web3.utils.toWei("0.5", "ether");
+    let isLineExecutedHere = false;
+    try {
+      await p2pLendingInstance.fundBorrowRequest(0, {
+        from: borrowerAccount,
+        value: amountToFund,
+      });
+      isLineExecutedHere = true;
+    } catch(e) {
+      assert.equal(isLineExecutedHere, false, "Borrower cant fund his own request");
+    }
+  })
+
   it("Lender can fund active borrow request", async () => {
     const lenderAccount = accounts[4];
     const amountToFund = web3.utils.toWei("0.5", "ether");
     const initialBalance = await web3.eth.getBalance(borrowRequestInstance.address);
-    
+
     await p2pLendingInstance.fundBorrowRequest(0, {
       from: lenderAccount,
       value: amountToFund,
     });
-    
+
     // check that lender got added into lenders mapping of the specific borrow request
     // get LenderInfo[] of borrow request by borrow request id
     const exists = await borrowRequestInstance.checkAddressExists(
@@ -175,7 +201,7 @@ contract("P2PLending", function (accounts) {
     );
     truffleAssert.eventEmitted(secondFunding, "LoanCreated");
     const newCount = await p2pLendingInstance.loanCount();
-    
+
     assert.equal(
       newCount.toNumber(),
       initialCount.toNumber() + 1,
@@ -183,18 +209,28 @@ contract("P2PLending", function (accounts) {
     );
   });
 
+  it("Check only borrower can withdraw from loan", async() => {
+    const wrongBorrower = accounts[2];
+    let isLineExecutedHere = false;
+    try {
+      await p2pLendingInstance.withdrawFundsFromLoans(0, {from: wrongBorrower});
+      isLineExecutedHere = true;
+    } catch(e) {
+      assert.equal(isLineExecutedHere, false, "Only borrower can withdraw from loan")
+    }
+  })
+
   it("Borrower can withdraw from the loan", async() => {
     const borrowerAccount = accounts[1];
-    
+
 
     const borrowedAmt = await borrowRequestInstance.getAmount(0);
-    
 
 
     const initialBalance = new BigNumber(await web3.eth.getBalance(borrowerAccount));
     await p2pLendingInstance.withdrawFundsFromLoans(0, {from: borrowerAccount});
 
- 
+
     const finalBalance = new BigNumber(await web3.eth.getBalance(borrowerAccount));
     const withdrawn = await borrowRequestInstance.getWithdrawn(0);
     const expectedFinalBalance = initialBalance.plus(new BigNumber(borrowedAmt));
@@ -208,7 +244,22 @@ contract("P2PLending", function (accounts) {
     assert.equal(withdrawn, true, "Funds not withdrawn");
 
   })
-  
+
+  it("Only Borrower can repay his loan", async() => {
+    const wrongBorrower = accounts[2];
+    const amountToPay = web3.utils.toWei("1.1", "ether");
+    let isLineExecutedHere = false;
+    try {
+      await p2pLendingInstance.repayLoan(0, {
+        from: wrongBorrower,
+        value: amountToPay,
+      });
+      isLineExecutedHere = true;
+    } catch(e) {
+      assert.equal(isLineExecutedHere, false, "Only Borrower can repay loan");
+    }
+  })
+
   it("Borrower can repay his own loan", async () => {
     const borrowerAccount = accounts[1];
     const lenderAccount = accounts[4];
@@ -219,14 +270,14 @@ contract("P2PLending", function (accounts) {
     const loan = await p2pLendingInstance.getLoanInfo(0);
     const collateralAmount = (await borrowRequestInstance.getCollateralAmount(0)).toNumber();
     const loanLenders = await p2pLendingInstance.getLenders(0);
-   
+
     const lenderAddresses = [lenderAccount, secondLenderAccount]
     const filteredLoanLenders = loanLenders.filter(entry => lenderAddresses.includes(entry[0]));
     const lentAmtValues = filteredLoanLenders.map(entry => entry[1]);
-    
-    const firstLenderRepayAmt = ((lentAmtValues[0] * (100 + loan.interest.toNumber())) / 100);                                
+
+    const firstLenderRepayAmt = ((lentAmtValues[0] * (100 + loan.interest.toNumber())) / 100);
     const secondLenderRepayAmt = ((lentAmtValues[1] * (100 + loan.interest.toNumber())) / 100);
-   
+
     const supposedBorrower = loan.borrower;
     const initialBloBalance = await bloTokenInstance.checkCredit({
       from: borrowerAccount,
@@ -250,13 +301,12 @@ contract("P2PLending", function (accounts) {
       "Collateral not returned to borrower correctly."
     );
 
-    
+
     const updatedBalanceLender = new BigNumber(await web3.eth.getBalance(lenderAccount));
     const updatedBalanceSecondLender = new BigNumber(await web3.eth.getBalance(secondLenderAccount));
-    
-    
+
     // const repaid = new BigNumber(web3.utils.toWei("0.55", "ether"));
-   
+
     assert.equal((initialBalanceLender.plus(firstLenderRepayAmt)).toNumber(), updatedBalanceLender.toNumber(), "Not balanced");
     assert.equal((initialBalanceSecondLender.plus(secondLenderRepayAmt)).toNumber(), updatedBalanceSecondLender.toNumber(), "Not balanced");
     const updatedLoan = await p2pLendingInstance.getLoanInfo(0);
@@ -264,4 +314,9 @@ contract("P2PLending", function (accounts) {
     truffleAssert.eventEmitted(result, "LoanRepaid");
   });
 
+  it("Check trust score updated", async () => {
+    const borrowerAccount = accounts[1];
+    let res = await p2pLendingInstance.getTrustScore(borrowerAccount);
+    assert.equal(60, res, "Trust score not updated");
+  })
 });

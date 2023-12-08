@@ -109,7 +109,9 @@ contract BorrowRequest {
         }
     }
 
-    function withdrawFromBorrowRequest(uint borrowRequestId, address payable borrower) validBorrowRequestId(borrowRequestId)  external payable {
+    function withdrawFromBorrowRequest(uint borrowRequestId, address payable borrower) 
+    validBorrowRequestId(borrowRequestId) onlyBorrower(borrowRequestId, borrower)
+     external payable {
         borrowRequest storage br = borrowRequests[borrowRequestId];
         br.withdrawn = true;
         borrower.transfer(borrowRequests[borrowRequestId].amount);
