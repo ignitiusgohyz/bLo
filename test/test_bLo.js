@@ -260,6 +260,19 @@ contract("P2PLending", function (accounts) {
     }
   })
 
+  it("Check if collateral transferred to lenders when borrower miss repayment date", async() => {
+    const originalExpiryDate = await p2pLendingInstance.getLoanExpiryDate(0);
+    await p2pLendingInstance.setExpiryDate(0, 0);
+    const amountToPay = web3.utils.toWei("1.1", "ether");
+    const initialBloTokenBalanceLender = await bloTokenInstance.checkCredit({from: accounts[4]});
+    const event = await p2pLendingInstance.repayLoan(0, {from: accounts[1], value: amountToPay});
+    truffleAssert.eventEmitted(event, "LoanExpired");
+    const updatedBloTokenBalanceLender = await bloTokenInstance.checkCredit({from: accounts[4]});
+    const result = updatedBloTokenBalanceLender.toNumber() > initialBloTokenBalanceLender.toNumber();
+    await p2pLendingInstance.setExpiryDate(0, originalExpiryDate);
+    assert.equal(result, true, "Lender did not receive seized collateral");
+  })
+
   it("Borrower can repay his own loan", async () => {
     const borrowerAccount = accounts[1];
     const lenderAccount = accounts[4];
@@ -317,6 +330,6 @@ contract("P2PLending", function (accounts) {
   it("Check trust score updated", async () => {
     const borrowerAccount = accounts[1];
     let res = await p2pLendingInstance.getTrustScore(borrowerAccount);
-    assert.equal(60, res, "Trust score not updated");
+    assert.equal(40, res, "Trust score not updated");
   })
 });
